@@ -105,7 +105,7 @@ find_package(HIP QUIET HINTS ${ROCM_PATH} ${ROCM_PATH}/lib/cmake)
 
 #set(WITH_CUDA_NVCXX_ONLY FALSE CACHE BOOL "(Deprecated) Whether to target CUDA exclusively with nvc++")
 
-if(APPLE OR WIN32)
+if(WIN32)
   set(DEFAULT_COMPILER_FEATURES_ENABLED false)
   set(ACPP_COMPILER_FEATURE_PROFILE "none" CACHE STRING "The level of AdaptiveCpp compiler features to enable. If not set to 'full', AdaptiveCpp will run in a degraded mode that may have implications for certain functionalities or performance in certain cases.")
 else()
@@ -168,13 +168,15 @@ endif()
 
 message(STATUS "Building with compiler feature profile: ${ACPP_COMPILER_FEATURE_PROFILE}")
 
-# Check for OpenCL unless user has explicitly set WITH_SSCP_COMPILER to False
-if (DEFINED WITH_SSCP_COMPILER)
-  if (WITH_SSCP_COMPILER)
+if(NOT APPLE) # OpenCL on Apple is a lie!
+  # Check for OpenCL unless user has explicitly set WITH_SSCP_COMPILER to False
+  if (DEFINED WITH_SSCP_COMPILER)
+    if (WITH_SSCP_COMPILER)
+      find_package(OpenCL QUIET)
+    endif()
+  else()
     find_package(OpenCL QUIET)
   endif()
-else()
-  find_package(OpenCL QUIET)
 endif()
 
 # In case HIP is not found via the cmake pkgs we fall back to the legacy rocm discovery:

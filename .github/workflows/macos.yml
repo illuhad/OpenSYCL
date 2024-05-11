@@ -25,7 +25,7 @@ jobs:
         -DWITH_OPENCL_BACKEND=OFF \
         -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install
         make -j 2 install VERBOSE=ON
-    - name: build CPU tests
+    - name: build library only CPU tests
       run: |
         mkdir build/tests-cpu && cd build/tests-cpu
         cmake \
@@ -33,7 +33,34 @@ jobs:
         -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp \
         ${GITHUB_WORKSPACE}/tests
         make -j 2 VERBOSE=ON
+    - name: build accelerated CPU tests
+      run: |
+        mkdir build/tests-acc-cpu && cd build/tests-acc-cpu
+        cmake \
+        -DACPP_TARGETS=omp.accelerated \
+        -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp \
+        ${GITHUB_WORKSPACE}/tests
+        make -j 2 VERBOSE=ON
+    - name: build SSCP (CPU) tests
+      run: |
+        mkdir build/tests-sscp && cd build/tests-sscp
+        cmake \
+        -DACPP_TARGETS=generic \
+        -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp \
+        ${GITHUB_WORKSPACE}/tests
+        make -j 2 VERBOSE=ON
     - name: run CPU tests
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-cpu
         LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ./sycl_tests
+    - name: run accelerated CPU tests
+      run: |
+        cd ${GITHUB_WORKSPACE}/build/tests-acc-cpu
+        LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ./sycl_tests
+        LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ninja check-cbs
+    - name: run SSCP tests
+      run: |
+        cd ${GITHUB_WORKSPACE}/build/tests-acc-cpu
+        LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ./sycl_tests
+        LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ninja check-sscp
+
