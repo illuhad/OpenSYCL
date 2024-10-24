@@ -75,4 +75,8 @@
 #define ACPP_EXT_SPECIALIZED
 #define ACPP_EXT_DYNAMIC_FUNCTIONS
 
+// KHR extensions
+
+#define SYCL_KHR_DEFAULT_CONTEXT 1
+
 #endif
