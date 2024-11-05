@@ -1222,5 +1222,17 @@ BOOST_AUTO_TEST_CASE(sycl_specialized) {
   sycl::free(data, q);
 }
 #endif
+#ifdef SYCL_KHR_DEFAULT_CONTEXT
+BOOST_AUTO_TEST_CASE(khr_default_context) {
+  using namespace cl;
+  sycl::queue q1;
+  sycl::queue q2;
+
+  BOOST_CHECK(q1.get_context() == q2.get_context());
+  BOOST_CHECK(q1.get_device().get_platform().khr_get_default_context() ==
+              q1.get_context());
+  BOOST_CHECK(sycl::context{} != q1.get_context());
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
