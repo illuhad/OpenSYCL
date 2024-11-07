@@ -234,6 +234,17 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     HIPSYCL_DEBUG_INFO << "LLVMToBackend: Processing specialization " << A.first << "\n";
     A.second(M);
   }
+  for(auto& P : NoAliasParameters) {
+    auto* F = M.getFunction(P.first);
+    if(F) {
+      for(int i : P.second) {
+        HIPSYCL_DEBUG_INFO << "LLVMToBackend: Attaching noalias attribute to parameter " << i
+                           << " of kernel " << P.first << "\n";
+        if(i < F->getFunctionType()->getNumParams())
+          F->addParamAttr(i, llvm::Attribute::AttrKind::NoAlias);
+      }
+    }
+  }
   // Return error in case applying specializations has caused error list to be populated
   if(!Errors.empty())
     return false;
@@ -553,6 +564,10 @@ void LLVMToBackendTranslator::specializeFunctionCalls(
       }
     }
   };
+}
+
+void LLVMToBackendTranslator::setNoAliasKernelParam(const std::string &KernelName, int ParamIndex) {
+  NoAliasParameters[KernelName].push_back(ParamIndex);
 }
 
 void LLVMToBackendTranslator::provideExternalSymbolResolver(ExternalSymbolResolver Resolver) {

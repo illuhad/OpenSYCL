@@ -256,6 +256,12 @@ inline rt::result compile(compiler::LLVMToBackendTranslator *translator,
                                           call_specialization.second, false);
     }
   }
+  for (int i = 0; i < static_cast<int>(config.get_num_kernel_param_indices());
+       ++i) {
+    if (config.has_kernel_param_flag(i, rt::kernel_param_flag::restrict)) {
+      translator->setNoAliasKernelParam(translator->getKernels().front(), i);
+    }
+  }
 
   for(const auto& option : config.build_options()) {
     std::string option_name = rt::to_string(option.first);

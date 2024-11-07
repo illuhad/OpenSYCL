@@ -220,6 +220,14 @@ kernel_adaptivity_engine::finalize_binary_configuration(
         std::memcpy(&buffer_value, _arg_mapper.get_mapped_args()[i], arg_size);
         config.set_specialized_kernel_argument(i, buffer_value);
       }
+
+      if (_kernel_info->get_argument_type(i) ==
+          hcf_kernel_info::argument_type::pointer) {
+        if (has_annotation(_kernel_info, i,
+                           hcf_kernel_info::annotation_type::restrict)) {
+          config.set_kernel_param_flag(i, kernel_param_flag::restrict);
+        }
+      }
     }
   }
   

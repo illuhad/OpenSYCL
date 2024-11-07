@@ -69,6 +69,12 @@ enum class kernel_build_flag : int {
   spirv_enable_intel_llvm_spirv_options
 };
 
+enum class kernel_param_flag : int {
+  // these values are used as bit masks and should
+  // always have a value of a power of 2
+  restrict = 1
+};
+
 
 
 std::string to_string(kernel_build_flag f);
@@ -164,6 +170,12 @@ public:
         std::make_pair(param_index, buffer_value));
   }
 
+  void set_kernel_param_flag(int param_index, kernel_param_flag flag) {
+    if(_kernel_param_flags.size() <= param_index)
+      _kernel_param_flags.resize(param_index+1, 0);
+    _kernel_param_flags[param_index] |= static_cast<uint64_t>(flag);
+  }
+
   void set_function_call_specialization_config(
       int param_index, glue::sscp::fcall_config_kernel_property_t config) {
     _function_call_specializations.push_back(config);
@@ -249,6 +261,15 @@ public:
                         &config_id, sizeof(config_id));
     }
 
+    for(int i = 0; i < _kernel_param_flags.size(); ++i) {
+      if(_kernel_param_flags[i] != 0) {
+        auto flags = _kernel_param_flags[i];
+        uint64_t numeric_option_id = static_cast<uint64_t>(i) | (1ull << 36);
+        add_entry_to_hash(result, &numeric_option_id, sizeof(numeric_option_id),
+                          &flags, sizeof(flags));
+      }
+    }
+
     return result;
   }
 
@@ -270,6 +291,18 @@ public:
 
   const auto& function_call_specialization_config() const {
     return _function_call_specializations;
+  }
+
+  bool has_kernel_param_flag(int param_index, kernel_param_flag flag) const {
+    if(param_index < _kernel_param_flags.size()) {
+      return _kernel_param_flags[param_index] & static_cast<uint64_t>(flag);
+    }
+
+    return false;
+  }
+
+  std::size_t get_num_kernel_param_indices() const {
+    return _kernel_param_flags.size();
   }
 
 private:
@@ -334,6 +367,7 @@ private:
   std::vector<std::pair<int, uint64_t>> _specialized_kernel_args;
   std::vector<glue::sscp::fcall_config_kernel_property_t>
       _function_call_specializations;
+  std::vector<uint64_t> _kernel_param_flags;
 
   id_type _base_configuration_result = {};
 };

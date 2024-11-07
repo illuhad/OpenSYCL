@@ -4,6 +4,27 @@ AdaptiveCpp implements several extensions that are not defined by the specificat
 
 ## Supported extensions
 
+### `ACPP_EXT_RESTRICT_PTR`
+
+Provides a wrapper type that hints to the compiler that a pointer kernel argument does not alias other pointer arguments.
+
+
+Example:
+
+```c++
+
+sycl::queue q;
+float* data = ...
+sycl::AdaptiveCpp_restrict_ptr<float> restrict_data = data;
+
+q.parallel_for(range, [=](auto idx){
+  // Converts implicitly to the underlying pointer type - float* in this
+  // example.
+  restrict_data[idx] *= 1.5f;
+});
+
+```
+
 ### `ACPP_EXT_DYNAMIC_FUNCTIONS`
 
 This extension allows users to provide functions used in kernels with definitions selected at runtime. We call such functions *dynamic functions*, since their definition will be determined at runtime using the JIT compiler. Once a kernel using dynamic functions has been JIT-compiled, there are no runtime overheads as dynamic functions are hardwired at JIT-time.

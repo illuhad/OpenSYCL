@@ -67,6 +67,7 @@ public:
   }
 
   void setS2IRConstant(const std::string& name, const void* ValueBuffer);
+  void setNoAliasKernelParam(const std::string& KernelName, int ParamIndex);
   void specializeKernelArgument(const std::string &KernelName, int ParamIndex,
                                 const void *ValueBuffer);
   void specializeFunctionCalls(const std::string &FuncName,
@@ -89,7 +90,6 @@ public:
   bool fullTransformation(const std::string& LLVMIR, std::string& out);
   bool prepareIR(llvm::Module& M);
   bool translatePreparedIR(llvm::Module& FlavoredModule, std::string& out);
-
 
   const std::vector<std::string>& getErrorLog() const {
     return Errors;
@@ -243,6 +243,7 @@ private:
   std::string ErroringCode;
 
   std::vector<std::pair<std::string, std::vector<int>*>> FunctionsForDeadArgumentElimination;
+  std::unordered_map<std::string, std::vector<int>> NoAliasParameters;
 
 };
 
