@@ -72,7 +72,7 @@ enum class kernel_build_flag : int {
 enum class kernel_param_flag : int {
   // these values are used as bit masks and should
   // always have a value of a power of 2
-  restrict = 1
+  noalias = 1
 };
 
 

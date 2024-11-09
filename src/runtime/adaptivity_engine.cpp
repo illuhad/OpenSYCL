@@ -227,8 +227,8 @@ kernel_adaptivity_engine::finalize_binary_configuration(
       if (_kernel_info->get_argument_type(i) ==
           hcf_kernel_info::argument_type::pointer) {
         if (has_annotation(_kernel_info, i,
-                           hcf_kernel_info::annotation_type::restrict)) {
-          config.set_kernel_param_flag(i, kernel_param_flag::restrict);
+                           hcf_kernel_info::annotation_type::noalias)) {
+          config.set_kernel_param_flag(i, kernel_param_flag::noalias);
         }
       }
     }
@@ -280,10 +280,10 @@ kernel_adaptivity_engine::finalize_binary_configuration(
               }
             }
             if (!argument_might_alias) {
-              HIPSYCL_DEBUG_INFO << "adaptivity_engine: Inferred restrict "
+              HIPSYCL_DEBUG_INFO << "adaptivity_engine: Inferred noalias "
                                     "pointer semantics for kernel argument "
                                  << i << std::endl;
-              config.set_kernel_param_flag(i, kernel_param_flag::restrict);
+              config.set_kernel_param_flag(i, kernel_param_flag::noalias);
             }
           }
           ++alloc_index;

@@ -105,7 +105,7 @@ hcf_kernel_info::hcf_kernel_info(
             _known_annotations.back().push_back(
                 annotation_type::fcall_specialized_config);
           } else if(entry.first == "restrict") {
-            _known_annotations.back().push_back(annotation_type::restrict);
+            _known_annotations.back().push_back(annotation_type::noalias);
           } else {
             _string_annotations.back().push_back(entry.first);
           }
