@@ -16,6 +16,7 @@
 #include "backend.hpp"
 #include "device_id.hpp"
 #include "settings.hpp"
+#include "runtime_event_handlers.hpp"
 
 namespace hipsycl {
 namespace rt {
@@ -23,6 +24,7 @@ namespace rt {
 class dag_manager;
 class runtime;
 class async_error_list;
+
 
 class application
 {
@@ -32,6 +34,7 @@ public:
   // from the runtime or kernel launchers.
   static std::shared_ptr<runtime> get_runtime_pointer();
   static async_error_list& errors();
+  static runtime_event_handlers& event_handler_layer();
 
   application() = delete;
 };

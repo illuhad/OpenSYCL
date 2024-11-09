@@ -32,6 +32,7 @@
 
 
 #include "allocation_map.hpp"
+#include "hipSYCL/runtime/application.hpp"
 #include "offload_heuristic_db.hpp"
 #include "hipSYCL/runtime/settings.hpp"
 #include "hipSYCL/sycl/info/device.hpp"
@@ -252,6 +253,15 @@ public:
       assert(is_from_pool(ptr));
       assert(is_from_pool((char*)ptr+size));
       assert((uint64_t)ptr % _page_size == 0);
+
+      // Inform the runtime that there is a new user allocation
+      // by invoking the runtime hook. We need to do this manually
+      // because memory pool directly uses raw backend allocation commands.
+      rt::application::event_handler_layer().on_new_allocation(
+          ptr, size,
+          rt::allocation_info{_dev,
+                              rt::allocation_info::allocation_type::shared});
+
       return ptr;
     }
 
@@ -262,14 +272,14 @@ public:
     if(_pool && is_from_pool(ptr)) {
       uint64_t address = reinterpret_cast<uint64_t>(ptr)-reinterpret_cast<uint64_t>(_base_address);
       _free_space_map.release(address, size);
+
+      rt::application::event_handler_layer().on_deallocation(ptr);
     }
   }
 
   ~memory_pool() {
     // Memory pool might be destroyed after runtime shutdown, so rely on OS
     // to clean up for now
-    //if(_pool)
-    //  sycl::free(_pool, detail::single_device_dispatch::get_queue());
   }
 
   std::size_t get_size() const {
@@ -285,13 +295,25 @@ public:
   }
 private:
 
+  void* raw_malloc_shared(std::size_t bytes, sycl::queue& q) {
+    auto *allocator = sycl::detail::select_usm_allocator(q.get_context(),
+                                                         q.get_device());
+    return allocator->raw_allocate_usm(bytes);
+  }
+
   void init() {
     HIPSYCL_DEBUG_INFO << "[stdpar] Building a memory pool of size "
                        << static_cast<double>(_pool_size) / (1024 * 1024 * 1024)
                        << " GB" << std::endl;
+    auto& q = detail::single_device_dispatch::get_queue();
+    _dev = q.get_device().AdaptiveCpp_device_id();
+
+    // We need to call raw_allocate_usm so that we can inform the runtime's allocation
+    // tracking mechanism of actual user allocations, not just of the memory pool as a 
+    // whole.
     // Make sure to allocate an additional page so that we can fix alignment if needed
-    _pool = sycl::malloc_shared(
-        _pool_size + _page_size, detail::single_device_dispatch::get_queue());
+    _pool = raw_malloc_shared(_pool_size + _page_size, q);
+
     uint64_t aligned_pool_base = next_multiple_of((uint64_t)_pool, _page_size);
     _base_address = (void*)aligned_pool_base;
     assert(aligned_pool_base % _page_size == 0);
@@ -303,6 +325,7 @@ private:
   void* _base_address;
   free_space_map _free_space_map;
   std::size_t _page_size;
+  rt::device_id _dev;
 };
 
 class unified_shared_memory {

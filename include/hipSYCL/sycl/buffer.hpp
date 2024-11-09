@@ -1194,17 +1194,18 @@ private:
     if(!_impl->data->has_allocation(host_device)){
       if(this->has_property<property::buffer::use_optimized_host_memory>()){
         // TODO: Actually may need to use non-host backend here...
-        host_ptr =
-            rt->backends().get(host_device.get_backend())
-                ->get_allocator(host_device)
-                ->allocate_optimized_host(
-                    alignof(T), _impl->data->get_num_elements().size() * sizeof(T));
+        auto* allocator = rt->backends().get(host_device.get_backend())
+                ->get_allocator(host_device);
+        host_ptr = rt::allocate_host(allocator, alignof(T),
+                                     _impl->data->get_num_elements().size() *
+                                         sizeof(T));
       } else {
-        host_ptr =
-            rt->backends().get(host_device.get_backend())
-                ->get_allocator(host_device)
-                ->allocate(
-                    alignof(T), _impl->data->get_num_elements().size() * sizeof(T));
+        auto *allocator = rt->backends()
+                              .get(host_device.get_backend())
+                              ->get_allocator(host_device);
+        host_ptr = rt::allocate_device(allocator, alignof(T),
+                                       _impl->data->get_num_elements().size() *
+                                           sizeof(T));
       }
 
       if(!host_ptr)

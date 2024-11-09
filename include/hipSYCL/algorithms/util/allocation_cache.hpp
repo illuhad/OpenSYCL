@@ -53,10 +53,10 @@ public:
     std::lock_guard<std::mutex> lock{_mutex};
     
     for(auto& allocation : _allocations) {
-      _rt.get()->backends()
+      auto* allocator = _rt.get()->backends()
           .get(allocation.dev.get_backend())
-          ->get_allocator(allocation.dev)
-          ->free(allocation.ptr);
+          ->get_allocator(allocation.dev);
+      rt::deallocate(allocator, allocation.ptr);
     }
     _allocations.clear();
   }
@@ -74,12 +74,12 @@ private:
                        ->get_allocator(dev);
 
       if(_alloc_type == allocation_type::device)
-        result.ptr = allocator->allocate(min_alignment, min_size);
+        result.ptr = rt::allocate_device(allocator, min_alignment, min_size);
       else if(_alloc_type == allocation_type::shared)
-        result.ptr = allocator->allocate_usm(min_size);
+        result.ptr = rt::allocate_shared(allocator, min_size);
       else
         result.ptr =
-            allocator->allocate_optimized_host(min_alignment, min_size);
+            rt::allocate_host(allocator, min_alignment, min_size);
     }
     return result;
   }

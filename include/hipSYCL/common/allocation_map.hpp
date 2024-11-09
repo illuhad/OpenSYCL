@@ -135,7 +135,8 @@ public:
   }
 
   ~allocation_map() {
-    for(int i = 0; i < get_num_entries_in_level(bit_tree_t::root_level_idx); ++i) {
+    for (int i = 0;
+         i < this->get_num_entries_in_level(bit_tree_t::root_level_idx); ++i) {
       auto* ptr = _root.children[i].load(std::memory_order_acquire);
       if(ptr)
         release(*ptr);
@@ -251,8 +252,8 @@ private:
 
     uint64_t max_local_address =
         root_address |
-        get_n_low_bits_set(bit_tree_t::get_bitoffset_in_level(Level) +
-                           bit_tree_t::bitsizes[Level]);
+        this->get_n_low_bits_set(bit_tree_t::get_bitoffset_in_level(Level) +
+                                 bit_tree_t::bitsizes[Level]);
 
     // We are always looking for the next allocation preceding the
     // current address. If the maximum local address in this node

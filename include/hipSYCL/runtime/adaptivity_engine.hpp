@@ -38,6 +38,8 @@ public:
   finalize_binary_configuration(kernel_configuration &config);
 
   std::string select_image_and_kernels(std::vector<std::string>* kernel_names_out);
+
+  static bool needs_application_memory_tracking();
 private:
   hcf_object_id _hcf;
   std::string_view _kernel_name;

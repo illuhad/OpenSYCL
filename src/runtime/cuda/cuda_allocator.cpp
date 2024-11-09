@@ -21,7 +21,7 @@ cuda_allocator::cuda_allocator(backend_descriptor desc, int cuda_device)
     : _backend_descriptor{desc}, _dev{cuda_device}
 {}
       
-void *cuda_allocator::allocate(size_t min_alignment, size_t size_bytes)
+void *cuda_allocator::raw_allocate(size_t min_alignment, size_t size_bytes)
 {
   void *ptr;
   cuda_device_manager::get().activate_device(_dev);
@@ -38,8 +38,8 @@ void *cuda_allocator::allocate(size_t min_alignment, size_t size_bytes)
   return ptr;
 }
 
-void *cuda_allocator::allocate_optimized_host(size_t min_alignment,
-                                             size_t bytes) {
+void *cuda_allocator::raw_allocate_optimized_host(size_t min_alignment,
+                                                  size_t bytes) {
   void *ptr;
   cuda_device_manager::get().activate_device(_dev);
 
@@ -55,7 +55,7 @@ void *cuda_allocator::allocate_optimized_host(size_t min_alignment,
   return ptr;
 }
 
-void cuda_allocator::free(void *mem) {
+void cuda_allocator::raw_free(void *mem) {
 
   pointer_info info;
   result query_result = query_pointer(mem, info);
@@ -79,7 +79,7 @@ void cuda_allocator::free(void *mem) {
   }
 }
 
-void * cuda_allocator::allocate_usm(size_t bytes)
+void * cuda_allocator::raw_allocate_usm(size_t bytes)
 {
   cuda_device_manager::get().activate_device(_dev);
   
@@ -155,6 +155,10 @@ result cuda_allocator::mem_advise(const void *addr, std::size_t num_bytes,
                         << std::endl;
 #endif // _WIN32
   return make_success();
+}
+
+device_id cuda_allocator::get_device() const {
+  return device_id{_backend_descriptor, _dev};
 }
 
 }

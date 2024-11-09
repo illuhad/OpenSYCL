@@ -417,7 +417,7 @@ public:
                  "a memory leak."
               << std::endl;
         } else {
-          alloc.managing_allocator->free(alloc.memory);
+          rt::deallocate(alloc.managing_allocator, alloc.memory);
         }
       }
       return true;

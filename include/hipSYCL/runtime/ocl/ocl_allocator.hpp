@@ -23,16 +23,16 @@ class ocl_allocator : public backend_allocator
 {
 public:
   ocl_allocator() = default;
-  ocl_allocator(ocl_usm* usm_provier);
+  ocl_allocator(rt::device_id dev, ocl_usm* usm_provier);
 
-  virtual void* allocate(size_t min_alignment, size_t size_bytes) override;
+  virtual void* raw_allocate(size_t min_alignment, size_t size_bytes) override;
 
-  virtual void *allocate_optimized_host(size_t min_alignment,
+  virtual void *raw_allocate_optimized_host(size_t min_alignment,
                                         size_t bytes) override;
   
-  virtual void free(void *mem) override;
+  virtual void raw_free(void *mem) override;
 
-  virtual void *allocate_usm(size_t bytes) override;
+  virtual void *raw_allocate_usm(size_t bytes) override;
   virtual bool is_usm_accessible_from(backend_descriptor b) const override;
 
   virtual result query_pointer(const void* ptr, pointer_info& out) const override;
@@ -40,8 +40,10 @@ public:
   virtual result mem_advise(const void *addr, std::size_t num_bytes,
                             int advise) const override;
 
+  virtual device_id get_device() const override;
 private:
   ocl_usm* _usm;
+  rt::device_id _dev;
 };
 
 }

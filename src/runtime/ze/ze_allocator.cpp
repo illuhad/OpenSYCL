@@ -10,6 +10,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include <level_zero/ze_api.h>
 
+#include "hipSYCL/runtime/device_id.hpp"
 #include "hipSYCL/runtime/ze/ze_allocator.hpp"
 #include "hipSYCL/runtime/error.hpp"
 #include "hipSYCL/runtime/util.hpp"
@@ -17,13 +18,18 @@
 namespace hipsycl {
 namespace rt {
 
-ze_allocator::ze_allocator(const ze_hardware_context *device,
+ze_allocator::ze_allocator(std::size_t device_index,
+                           const ze_hardware_context *device,
                            const ze_hardware_manager *hw_manager)
     : _ctx{device->get_ze_context()}, _dev{device->get_ze_device()},
       _global_mem_ordinal{device->get_ze_global_memory_ordinal()},
-      _hw_manager{hw_manager} {}
+      _hw_manager{hw_manager} {
+  _dev_id = device_id{backend_descriptor{hardware_platform::level_zero,
+                                         api_platform::level_zero},
+                      static_cast<int>(device_index)};
+}
 
-void* ze_allocator::allocate(size_t min_alignment, size_t size_bytes) {
+void* ze_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
   
   void* out = nullptr;
 
@@ -47,8 +53,8 @@ void* ze_allocator::allocate(size_t min_alignment, size_t size_bytes) {
   return out;
 }
 
-void* ze_allocator::allocate_optimized_host(size_t min_alignment,
-                                            size_t bytes) {
+void* ze_allocator::raw_allocate_optimized_host(size_t min_alignment,
+                                                size_t bytes) {
   void* out = nullptr;
   ze_host_mem_alloc_desc_t desc;
   
@@ -69,7 +75,7 @@ void* ze_allocator::allocate_optimized_host(size_t min_alignment,
   return out;
 }
   
-void ze_allocator::free(void *mem) {
+void ze_allocator::raw_free(void *mem) {
   ze_result_t err = zeMemFree(_ctx, mem);
 
   if(err != ZE_RESULT_SUCCESS) {
@@ -79,7 +85,7 @@ void ze_allocator::free(void *mem) {
   }
 }
 
-void* ze_allocator::allocate_usm(size_t bytes) {
+void* ze_allocator::raw_allocate_usm(size_t bytes) {
 
   void* out = nullptr;
 
@@ -165,6 +171,10 @@ result ze_allocator::mem_advise(const void *addr, std::size_t num_bytes,
       << "mem_advise is unsupported on Level Zero backend, ignoring"
       << std::endl;
   return make_success();
+}
+
+device_id ze_allocator::get_device() const {
+  return _dev_id;
 }
 
 }

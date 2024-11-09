@@ -241,7 +241,8 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
         HIPSYCL_DEBUG_INFO << "LLVMToBackend: Attaching noalias attribute to parameter " << i
                            << " of kernel " << P.first << "\n";
         if(i < F->getFunctionType()->getNumParams())
-          F->addParamAttr(i, llvm::Attribute::AttrKind::NoAlias);
+          if(!F->hasParamAttribute(i, llvm::Attribute::AttrKind::NoAlias))
+            F->addParamAttr(i, llvm::Attribute::AttrKind::NoAlias);
       }
     }
   }

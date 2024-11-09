@@ -561,7 +561,10 @@ void ocl_hardware_context::init_allocator(ocl_hardware_manager *mgr) {
                              "allocations are not possible on that device."
                           << std::endl;
   }
-  _alloc = ocl_allocator{_usm_provider.get()};
+  device_id dev{
+      backend_descriptor{hardware_platform::ocl, api_platform::ocl},
+      _dev_id};
+  _alloc = ocl_allocator{dev, _usm_provider.get()};
 }
 
 ocl_hardware_manager::ocl_hardware_manager()
