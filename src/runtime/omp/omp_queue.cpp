@@ -210,9 +210,13 @@ launch_kernel_from_so(omp_sscp_executable_object::omp_sscp_kernel *kernel,
     // get page aligned local memory from heap
     static thread_local std::vector<char> local_memory;
 
-    const auto page_size = get_page_size();
-    local_memory.resize(shared_memory + page_size);
-    auto aligned_local_memory = reinterpret_cast<void*>(next_multiple_of(reinterpret_cast<std::uint64_t>(local_memory.data()), page_size));
+    // compiler/libkernel builtins assume that local mem is aligned to at least
+    // 512 byte boundaries
+    const auto local_mem_alignment = std::max(std::size_t{512}, get_page_size());
+    local_memory.resize(shared_memory + local_mem_alignment);
+    auto aligned_local_memory = reinterpret_cast<void *>(
+        next_multiple_of(reinterpret_cast<std::uint64_t>(local_memory.data()),
+                         local_mem_alignment));
 
 #ifdef _OPENMP
 #pragma omp for collapse(3)
