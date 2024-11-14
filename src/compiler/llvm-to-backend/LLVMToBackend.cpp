@@ -15,6 +15,7 @@
 #include "hipSYCL/compiler/llvm-to-backend/GlobalInliningAttributorPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/KnownGroupSizeOptPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/LLVMToBackend.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/KnownPtrParamAlignmentOptPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/compiler/sscp/KernelOutliningPass.hpp"
@@ -261,8 +262,12 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     KnownGroupSizeOptPass GroupSizeOptPass{KnownGroupSizeX, KnownGroupSizeY, KnownGroupSizeZ};
     GlobalSizesFitInI32OptPass SizesAsIntOptPass{GlobalSizesFitInInt, KnownGroupSizeX,
                                                  KnownGroupSizeY, KnownGroupSizeZ};
+
     GroupSizeOptPass.run(M, MAM);
     SizesAsIntOptPass.run(M, MAM);
+
+    KnownPtrParamAlignmentOptPass KnownAlignmentOptPass{KnownPtrParamAlignments};
+    KnownAlignmentOptPass.run(M, MAM);
 
     // Before optimizing, make sure everything has internal linkage to
     // help inlining. All linking should have occured by now, except
@@ -665,6 +670,17 @@ void LLVMToBackendTranslator::runKernelDeadArgumentElimination(
                        << " has resulted in these arguments being retained: " << RetainedArgsStr
                        << "\n";
   }
+}
+
+void LLVMToBackendTranslator::setKnownPtrParamAlignment(const std::string &FunctionName,
+                                                        int ParamIndex, int Alignment) {
+  for (auto &Entry : KnownPtrParamAlignments[FunctionName]) {
+    if (Entry.first == ParamIndex) {
+      Entry.second = Alignment;
+      return;
+    }
+  }
+  KnownPtrParamAlignments[FunctionName].push_back(std::make_pair(ParamIndex, Alignment));
 }
 }
 }
