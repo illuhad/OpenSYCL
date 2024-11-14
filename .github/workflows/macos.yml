@@ -16,14 +16,23 @@ jobs:
         brew update
         brew install cmake
         brew install libomp
+        brew install llvm
         brew install boost
         set -e
+        
+        export CXX=`brew list llvm | grep clang++`
+        echo "CXX=${CXX}" >> $GITHUB_ENV
+        export LLVM_ROOT=`echo $CXX | sed -E "s/bin\/.*//"`
+        echo "LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm" >> $GITHUB_ENV
+        echo "LDFLAGS=-L${LLVM_ROOT}/lib/c++ -Wl,-rpath,${LLVM_ROOT}/lib/c++" >> $GITHUB_ENV
+        
     - name: build
       run: |
         mkdir build && cd build
         cmake .. \
         -DWITH_OPENCL_BACKEND=OFF \
-        -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install
+        -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install \
+        -DLLVM_DIR=$LLVM_DIR
         make -j 2 install VERBOSE=ON
     - name: build library only CPU tests
       run: |
