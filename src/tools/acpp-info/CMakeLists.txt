@@ -4,7 +4,7 @@ target_compile_definitions(acpp-info PRIVATE -DHIPSYCL_TOOL_COMPONENT)
 target_include_directories(acpp-info PRIVATE 
     ${HIPSYCL_SOURCE_DIR}
     ${HIPSYCL_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include)
+    ${ACPP_BINARY_ROOT}/include)
 
 target_link_libraries(acpp-info PRIVATE acpp-rt)
 

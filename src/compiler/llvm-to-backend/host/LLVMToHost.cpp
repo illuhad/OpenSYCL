@@ -140,7 +140,7 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
   llvm::WriteBitcodeToFile(FlavoredModule, InputStream);
   InputStream.flush();
 
-  const std::string ClangPath = HIPSYCL_CLANG_PATH;
+  const std::string ClangPath = common::filesystem::replace_known_variables(HIPSYCL_CLANG_PATH);
   const std::string CpuFlag = HIPSYCL_HOST_CPU_FLAG;
 
   llvm::SmallVector<llvm::StringRef, 16> Invocation{ClangPath,

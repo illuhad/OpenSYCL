@@ -8,7 +8,7 @@ set(HIPSYCL_RT_EXTRA_CXX_FLAGS "")
 set(HIPSYCL_RT_EXTRA_LINKER_FLAGS "")
 
 
-list(INSERT CMAKE_MODULE_PATH 0 "${PROJECT_SOURCE_DIR}/cmake/")
+list(INSERT CMAKE_MODULE_PATH 0 "${ACPP_SOURCE_ROOT}/cmake/")
 find_package(Filesystem REQUIRED "${ACPP_FILESYSTEM_SEARCH_OPTIONS}")
 set(CXX_FILESYSTEM_HEADER "${CXX_FILESYSTEM_HEADER}" PARENT_SCOPE)
 set(CXX_FILESYSTEM_NAMESPACE "${CXX_FILESYSTEM_NAMESPACE}" PARENT_SCOPE)
@@ -60,7 +60,7 @@ target_include_directories(acpp-rt
     $<INSTALL_INTERFACE:include>
   PRIVATE
     ${HIPSYCL_SOURCE_DIR}
-    ${PROJECT_BINARY_DIR}/include
+    ${ACPP_BINARY_ROOT}/include
 )
 
 # to get the search path next to the rt lib, we need to know the output name, so set it explicitly.
@@ -114,7 +114,6 @@ if(WITH_CUDA_BACKEND)
   target_include_directories(rt-backend-cuda PRIVATE
     ${HIPSYCL_SOURCE_DIR}/include
     ${CUDA_TOOLKIT_ROOT_DIR}/include)
-  
   target_link_libraries(rt-backend-cuda PRIVATE acpp-rt ${CUDA_LIBS})
 
   target_compile_options(rt-backend-cuda PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
@@ -297,7 +296,7 @@ if(WITH_CPU_BACKEND)
     
     target_include_directories(rt-backend-omp PRIVATE
       ${HIPSYCL_SOURCE_DIR}/include 
-      ${PROJECT_BINARY_DIR}/include)
+      ${ACPP_BINARY_ROOT}/include)
 
     if(WITH_SSCP_COMPILER)
       target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)

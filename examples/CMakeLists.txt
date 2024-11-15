@@ -6,7 +6,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(opensycl-examples)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ACPP_SOURCE_ROOT}/cmake)
 
 find_package(AdaptiveCpp CONFIG REQUIRED)
 
@@ -35,6 +35,6 @@ if(WIN32)
   add_definitions(-D_USE_MATH_DEFINES)
 endif()
 
-include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
+include_directories(${ACPP_BINARY_ROOT} ${ACPP_SOURCE_ROOT})
 
 subdirs(bruteforce_nbody)

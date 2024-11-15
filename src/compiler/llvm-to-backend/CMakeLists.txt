@@ -2,7 +2,7 @@
 set(LLVM_TO_BACKEND_INCLUDE_DIRS 
   ../../../include
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_BINARY_DIR}/include)
+  ${ACPP_BINARY_ROOT}/include)
 
 set(CMAKE_INSTALL_RPATH ${base} ${base}/../../)
 
@@ -31,9 +31,14 @@ function(create_llvm_based_library)
   target_compile_definitions(${target} PRIVATE
     ${LLVM_DEFINITIONS_LIST})
   target_compile_definitions(${target} PRIVATE -DHIPSYCL_COMPILER_COMPONENT)
-  find_library(LLVM_LIBRARY NAMES LLVM LLVM-${LLVM_VERSION_MAJOR} HINTS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-  if(NOT LLVM_LIBRARY)
-    message(FATAL_ERROR "LLVM at ${LLVM_DIR} does not have libLLVM.so. Please disable SSCP and related backends (-DWITH_SSCP_COMPILER=OFF -DWITH_OPENCL_BACKEND=OFF -DWITH_LEVEL_ZERO_BACKEND=OFF) or choose another LLVM installation")
+
+  if(NOT ACPP_LLVM_COMPONENT)
+    find_library(LLVM_LIBRARY NAMES LLVM LLVM-${LLVM_VERSION_MAJOR} HINTS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    if(NOT LLVM_LIBRARY)
+      message(FATAL_ERROR "LLVM at ${LLVM_DIR} does not have libLLVM.so. Please disable SSCP and related backends (-DWITH_SSCP_COMPILER=OFF -DWITH_OPENCL_BACKEND=OFF -DWITH_LEVEL_ZERO_BACKEND=OFF) or choose another LLVM installation")
+    endif()
+  elseif(NOT LLVM_BUILD_LLVM_DYLIB)
+    message(FATAL_ERROR "LLVM is not configured to build libLLVM.so. Please disable reconfigure with LLVM_BUILD_LLVM_DYLIB and LLVM_LINK_LLVM_DYLIB.")
   endif()
   llvm_config(${target} USE_SHARED core support irreader passes)
   # We need symbolic functions for stdpar
@@ -167,7 +172,7 @@ if(WITH_SSCP_COMPILER)
       TOOL ptx/LLVMToPtxTool.cpp)
 
     target_compile_definitions(llvm-to-ptx PRIVATE
-      -DHIPSYCL_CLANG_PATH="${CLANG_EXECUTABLE_PATH}" 
+      -DHIPSYCL_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_CUDA_PATH="${CUDA_TOOLKIT_ROOT_DIR}")
   endif()
 
@@ -186,7 +191,7 @@ if(WITH_SSCP_COMPILER)
         -DACPP_HIPCC_PATH="${HIPCC_PATH}")
     endif()
     target_compile_definitions(llvm-to-amdgpu PRIVATE
-        -DACPP_CLANG_PATH="${CLANG_EXECUTABLE_PATH}")
+        -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}")
 
     find_library(HIPRTC_LIBRARY hiprtc HINTS ${ROCM_PATH}/lib)
    
@@ -222,7 +227,7 @@ if(WITH_SSCP_COMPILER)
       TOOL host/LLVMToHostTool.cpp)
 
     target_compile_definitions(llvm-to-host PRIVATE
-      -DHIPSYCL_CLANG_PATH="${CLANG_EXECUTABLE_PATH}" 
+      -DHIPSYCL_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_HOST_CPU_FLAG="${HOST_CPU_FLAG}")
     target_link_libraries(llvm-to-host PRIVATE acpp-clang-cbs)
   endif()

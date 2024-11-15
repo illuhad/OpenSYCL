@@ -5,7 +5,7 @@
 # Remove our own modules from cmake's module search path to prevent
 # it from recursively calling this module when using find_package(CUDA) below.
 set(OLD_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
-list(REMOVE_ITEM CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+list(REMOVE_ITEM CMAKE_MODULE_PATH "${ACPP_SOURCE_ROOT}/cmake/")
 
 if (CMAKE_VERSION VERSION_LESS 3.17)
    find_package(CUDA QUIET)

@@ -1,7 +1,14 @@
-cmake_minimum_required(VERSION 3.5)
-project(acpp-clang)
+if(LLVM_ADAPTIVECPP_LINK_INTO_TOOLS)
+  message("-- AdaptiveCpp: Linking AdaptiveCpp into LLVM tools")
+  set(COMPILER_LIBRARY_NAME "AdaptiveCpp")
+else()
+  set(COMPILER_LIBRARY_NAME "acpp-clang")
+endif()
 
-get_filename_component(CLANG_BINARY_PREFIX ${CLANG_EXECUTABLE_PATH} DIRECTORY)
+if(NOT ACPP_LLVM_COMPONENT)
+  cmake_minimum_required(VERSION 3.5)
+  project(acpp-clang)
+endif()
 
 if(NOT HIPSYCL_DEBUG_LEVEL)
   set(HIPSYCL_DEBUG_LEVEL 2 CACHE INTEGER)
@@ -33,9 +40,15 @@ if(WITH_ACCELERATED_CPU OR WITH_SSCP_COMPILER)
     cbs/Region.cpp
     cbs/SyncDependenceAnalysis.cpp)
 
-  add_library(acpp-clang-cbs OBJECT
-    ${CBS_PLUGIN}
-  )
+  if(ACPP_LLVM_COMPONENT)
+    add_llvm_component_library(acpp-clang-cbs OBJECT
+      ${CBS_PLUGIN}
+      PARTIAL_SOURCES_INTENDED)
+  else()
+    add_library(acpp-clang-cbs OBJECT
+      ${CBS_PLUGIN}
+    )
+  endif()
   
   set_property(TARGET acpp-clang-cbs PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
@@ -75,13 +88,37 @@ else()
   set(REFLECTION_BUILTINS "")
 endif()
 
-add_library(acpp-clang SHARED
-  AdaptiveCppClangPlugin.cpp
+set(COMPILER_LIBRARY_SOURCES
+  AdaptiveCppLlvmPasses.cpp
   GlobalsPruningPass.cpp
   ${SSCP_COMPILER}
   ${STDPAR_COMPILER}
   ${REFLECTION_BUILTINS}
 )
+
+if(NOT ACPP_LLVM_COMPONENT)
+  add_library(${COMPILER_LIBRARY_NAME} MODULE
+    ${COMPILER_LIBRARY_SOURCES}
+    frontend/AdaptiveCppClangPlugin.cpp
+  )
+else()
+  add_clang_library(acpp-frontend OBJECT
+    frontend/AdaptiveCppClangPlugin.cpp
+    PARTIAL_SOURCES_INTENDED)
+  set_property(TARGET acpp-frontend PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+  set_property(
+      TARGET clang-cpp
+      APPEND PROPERTY
+          LINK_LIBRARIES obj.acpp-frontend
+  ) 
+
+  add_llvm_pass_plugin(${COMPILER_LIBRARY_NAME}
+    NO_MODULE
+    SUBPROJECT AdaptiveCpp
+    ${COMPILER_LIBRARY_SOURCES}
+  )
+endif()
 
 function(configure_target)
   set(options)
@@ -99,7 +136,7 @@ function(configure_target)
   target_include_directories(${target} PRIVATE
     ../../include
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_BINARY_DIR}/include)
+    ${ACPP_BINARY_ROOT}/include)
   target_include_directories(${target} SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 
   separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
@@ -112,21 +149,23 @@ function(configure_target)
     target_compile_definitions(${target} PRIVATE -DROCM_CLANG_VERSION_MAJOR=${ROCM_VERSION_MAJOR} -DROCM_CLANG_VERSION_MINOR=${ROCM_VERSION_MINOR} -DROCM_CLANG_VERSION_PATCH=${ROCM_VERSION_PATCH})
   endif()
 
-  if(NOT ${LLVM_ENABLE_EH})
-    target_compile_options(${target} PRIVATE -fno-exceptions)
+  if(NOT ACPP_LLVM_COMPONENT)
+    if(NOT ${LLVM_ENABLE_EH})
+      target_compile_options(${target} PRIVATE -fno-exceptions)
+    endif()
+
+    if(NOT ${LLVM_ENABLE_RTTI})
+      target_compile_options(${target} PRIVATE -fno-rtti)
+    endif()
+
+    target_link_libraries(${target} PRIVATE
+      ${LLVM_LIBS})
   endif()
 
-  if(NOT ${LLVM_ENABLE_RTTI})
-    target_compile_options(${target} PRIVATE -fno-rtti)
-  endif()
-
-  target_link_libraries(${target}
-    ${LLVM_LIBS})
-
-  if(WIN32)
+  if(WIN32 AND NOT ACPP_LLVM_COMPONENT)
     set(CLANG_LIBRARY_DIR ${LLVM_PREFIX_DIR}/lib/)
     target_link_directories(${target} PRIVATE ${CLANG_LIBRARY_DIR})
-    target_link_libraries(${target} clang LLVMSupport)
+    target_link_libraries(${target} PRIVATE clang LLVMSupport)
   endif()
 
   install(TARGETS ${target}
@@ -135,21 +174,30 @@ function(configure_target)
           ARCHIVE DESTINATION lib)
 endfunction(configure_target)
 
-configure_target(TARGET acpp-clang)
+if(ACPP_LLVM_COMPONENT)
+  configure_target(TARGET obj.${COMPILER_LIBRARY_NAME})
+  configure_target(TARGET obj.acpp-frontend)
+else()
+  configure_target(TARGET ${COMPILER_LIBRARY_NAME})
+endif()
 
 if (WITH_ACCELERATED_CPU OR WITH_SSCP_COMPILER)
-  configure_target(TARGET acpp-clang-cbs)
+  if(ACPP_LLVM_COMPONENT)
+    configure_target(TARGET obj.acpp-clang-cbs)
+  else()
+    configure_target(TARGET acpp-clang-cbs)
+  endif()
 
-  target_link_libraries(acpp-clang acpp-clang-cbs)
+  target_link_libraries(${COMPILER_LIBRARY_NAME} PUBLIC acpp-clang-cbs)
 endif()
 
 
 if(APPLE)
-  target_link_libraries(acpp-clang -Wl,-undefined -Wl,dynamic_lookup)
+  target_link_libraries(${COMPILER_LIBRARY_NAME} PRIVATE -Wl,-undefined -Wl,dynamic_lookup)
 elseif(WIN32)
-  set_target_properties(acpp-clang PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS On)
+  set_target_properties(${COMPILER_LIBRARY_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS On)
 else()
-  target_link_libraries(acpp-clang -Wl,-znodelete)
+  target_link_libraries(${COMPILER_LIBRARY_NAME} PRIVATE -Wl,-znodelete)
 endif()
 
 

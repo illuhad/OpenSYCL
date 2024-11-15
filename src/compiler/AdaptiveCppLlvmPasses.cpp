@@ -10,10 +10,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/common/config.hpp"
 
-#include "hipSYCL/compiler/FrontendPlugin.hpp"
 #include "hipSYCL/compiler/GlobalsPruningPass.hpp"
 #include "hipSYCL/compiler/cbs/PipelineBuilder.hpp"
-
 
 #ifdef HIPSYCL_WITH_STDPAR_COMPILER
 #include "hipSYCL/compiler/stdpar/MallocToUSM.hpp"
@@ -34,8 +32,6 @@
 #include "hipSYCL/compiler/reflection/IntrospectStructPass.hpp"
 #include "hipSYCL/compiler/reflection/FunctionNameExtractionPass.hpp"
 #endif
-
-#include "clang/Frontend/FrontendPluginRegistry.h"
 
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -67,9 +63,6 @@ static llvm::cl::opt<bool> StdparNoMallocToUSM{
     llvm::cl::desc{"Disable hipSYCL C++ standard parallelism malloc-to-usm compiler-side support"}};
 
 // Register and activate passes
-
-static clang::FrontendPluginRegistry::Add<hipsycl::compiler::FrontendASTAction>
-    HipsyclFrontendPlugin{"hipsycl_frontend", "enable hipSYCL frontend action"};
 
 #if LLVM_VERSION_MAJOR < 16
 static void registerGlobalsPruningPass(const llvm::PassManagerBuilder &,
@@ -111,6 +104,8 @@ static llvm::RegisterStandardPasses
 #endif // HIPSYCL_WITH_ACCELERATED_CPU
 #endif // LLVM_VERSION_MAJOR < 16
 
+}}
+
 #if !defined(_WIN32)
 #define HIPSYCL_RESOLVE_AND_QUOTE(V) #V
 #define HIPSYCL_STRINGIFY(V) HIPSYCL_RESOLVE_AND_QUOTE(V)
@@ -118,9 +113,10 @@ static llvm::RegisterStandardPasses
   "v" HIPSYCL_STRINGIFY(ACPP_VERSION_MAJOR) "." HIPSYCL_STRINGIFY(                              \
       ACPP_VERSION_MINOR) "." HIPSYCL_STRINGIFY(ACPP_VERSION_PATCH)
 
-extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "hipSYCL Clang plugin", HIPSYCL_PLUGIN_VERSION_STRING,
+llvm::PassPluginLibraryInfo getAdaptiveCppPluginInfo(){
+  using namespace hipsycl::compiler;
+return {
+    LLVM_PLUGIN_API_VERSION, "AdaptiveCpp Clang plugin", HIPSYCL_PLUGIN_VERSION_STRING,
         [](llvm::PassBuilder &PB) {
           // Note: for Clang < 12, this EP is not called for O0, but the new PM isn't
           // really used there anyways..
@@ -182,7 +178,10 @@ extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginIn
         }
   };
 }
-#endif // !_WIN32
 
-} // namespace compiler
-} // namespace hipsycl
+#ifndef LLVM_ADAPTIVECPP_LINK_INTO_TOOLS
+extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
+  return getAdaptiveCppPluginInfo();
+}
+#endif
+#endif // !_WIN32

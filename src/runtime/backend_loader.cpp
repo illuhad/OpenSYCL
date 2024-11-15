@@ -11,6 +11,7 @@
 #include "hipSYCL/runtime/backend_loader.hpp"
 #include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/dylib_loader.hpp"
+#include "hipSYCL/common/filesystem.hpp"
 #include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/common/config.hpp"
 #include "hipSYCL/runtime/device_id.hpp"
@@ -67,22 +68,31 @@ std::vector<fs::path> get_plugin_search_paths()
 {
   std::vector<fs::path> paths;
 #ifndef _WIN32
+  #define HIPSYCL_BACKEND_LIB_FOLDER "lib"
   Dl_info info;
   if (dladdr(reinterpret_cast<void*>(&get_plugin_search_paths), &info)) {
     paths.emplace_back(fs::path{info.dli_fname}.parent_path() / "hipSYCL");
   }
-  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / "lib" / "hipSYCL";
 #else
+  #define HIPSYCL_BACKEND_LIB_FOLDER "bin"
+
   if(HMODULE handle = GetModuleHandleA(HIPSYCL_RT_LIBRARY_NAME))
   {
     std::vector<char> path_buffer(MAX_PATH);
-    if(GetModuleFileNameA(handle, path_buffer.data(), path_buffer.size()))
+    while(GetModuleFileNameA(handle, path_buffer.data(), path_buffer.size()) == path_buffer.size())
     {
-      paths.emplace_back(fs::path{path_buffer.data()}.parent_path() / "hipSYCL");
+      path_buffer.resize(path_buffer.size() * 2);
+      if(path_buffer.size() >= 1024*1024) // 1MB paths? sure. I think it's time to give up...
+        break;
     }
+    paths.emplace_back(fs::path{path_buffer.data()}.parent_path() / "hipSYCL");
   }
-  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / "bin" / "hipSYCL";
 #endif
+
+  if(auto install_dir = hipsycl::common::filesystem::get_install_directory(); !install_dir.empty())
+    paths.emplace_back(fs::path(install_dir) / HIPSYCL_BACKEND_LIB_FOLDER / "hipSYCL");
+
+  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / HIPSYCL_BACKEND_LIB_FOLDER / "hipSYCL";
 
   if(paths.empty()
       || !fs::is_directory(paths.back())

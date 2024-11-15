@@ -247,7 +247,7 @@ bool LLVMToPtxTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
   llvm::WriteBitcodeToFile(FlavoredModule, InputStream);
   InputStream.flush();
 
-  std::string ClangPath = HIPSYCL_CLANG_PATH;
+  std::string ClangPath = common::filesystem::replace_known_variables(HIPSYCL_CLANG_PATH);
 
   std::string PtxVersionArg = "+ptx" + std::to_string(PtxVersion);
   std::string PtxTargetArg = "sm_" + std::to_string(PtxTarget);
