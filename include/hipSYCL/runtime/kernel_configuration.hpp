@@ -217,6 +217,10 @@ public:
     return _function_call_specializations;
   }
 
+  const auto& known_alignments() const {
+    return _known_alignments;
+  }
+
 private:
   static const void* data_ptr(const char* data) {
     return data_ptr(std::string{data});

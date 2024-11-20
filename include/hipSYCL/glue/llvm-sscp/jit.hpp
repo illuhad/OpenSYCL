@@ -245,6 +245,11 @@ inline rt::result compile(compiler::LLVMToBackendTranslator *translator,
       translator->specializeKernelArgument(translator->getKernels().front(),
                                           entry.first, &entry.second);
     }
+
+    for(const auto& entry : config.known_alignments()) {
+      translator->setKnownPtrParamAlignment(translator->getKernels().front(),
+                                            entry.first, entry.second);
+    }
   }
   for(const auto& entry : config.function_call_specialization_config()) {
     auto& config = entry.value->function_call_map;
