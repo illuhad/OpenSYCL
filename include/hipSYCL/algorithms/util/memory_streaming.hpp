@@ -61,14 +61,15 @@ public:
   template <class F>
   static void run(std::size_t problem_size, sycl::nd_item<1> idx,
                   F &&f) noexcept {
+    namespace jit = sycl::AdaptiveCpp_jit;
     __acpp_if_target_sscp(
-      if(sycl::jit::introspect<sycl::jit::current_backend, int>() == sycl::jit::backend::host) {
-        run_host(problem_size, idx, f);
-      } else {
-        run_device(problem_size, idx, f);
-      }
-      return;
-    );
+        jit::compile_if_else(
+            jit::reflect<jit::reflection_query::compiler_backend>() ==
+              jit::compiler_backend::host,
+            [&]() { run_host(problem_size, idx, f); },
+            [&]() { run_device(problem_size, idx, f); });
+
+        return;);
     __acpp_if_target_device(
       run_device(problem_size, idx, f);
     );

@@ -17,9 +17,36 @@
 #include <exception>
 #include <cstdlib>
 #include <limits>
+#include <cctype>
 
 namespace hipsycl {
 namespace rt {
+
+namespace {
+
+
+int device_arch_string_to_int(const std::string& device_name) {
+  std::string prefix = "gfx";
+  
+  if(device_name.find(prefix) != 0)
+    return 0;
+  
+  std::string substr = device_name;
+  substr.erase(0, prefix.length());
+
+  auto colon_pos = substr.find(":");
+  if(colon_pos != std::string::npos) {
+    substr.erase(colon_pos);
+  }
+
+  for(int i = 0; i < substr.length(); ++i) {
+    if(!std::isxdigit(substr[i]))
+      return 0;
+  }
+  return std::stoi(substr, nullptr, 16);
+}
+
+}
 
 hip_hardware_manager::hip_hardware_manager(hardware_platform hw_platform)
     : _hw_platform(hw_platform) {
@@ -97,6 +124,8 @@ hip_hardware_context::hip_hardware_context(int dev) : _dev{dev} {
   _allocator = std::make_unique<hip_allocator>(
       backend_descriptor{hardware_platform::rocm, api_platform::hip}, _dev);
   _event_pool = std::make_unique<hip_event_pool>(_dev);
+
+  _numeric_architecture = device_arch_string_to_int(get_device_arch());
 }
 
 hip_allocator* hip_hardware_context::get_allocator() const {
@@ -365,6 +394,11 @@ hip_hardware_context::get_property(device_uint_property prop) const {
     break;
   case device_uint_property::vendor_id:
     return 1022;
+    break;
+  case device_uint_property::architecture:
+    return _numeric_architecture;
+  case device_uint_property::backend_id:
+    return static_cast<int>(backend_id::hip);
     break;
   }
   assert(false && "Invalid device property");

@@ -32,6 +32,8 @@ class context;
 
 namespace detail {
 const rt::unique_device_list& extract_context_devices(const context&);
+
+struct default_context_tag_t{};
 }
 
 class context
@@ -82,6 +84,38 @@ public:
     }
     // Always need to add the host device
     _impl->devices.add(detail::get_host_device());
+  }
+
+  explicit context(
+      detail::default_context_tag_t,
+      async_handler handler =
+          [](exception_list e) { glue::default_async_handler(e); })
+      : context{handler} {
+    _impl->is_default_context = true;
+  }
+
+  explicit context(
+      detail::default_context_tag_t, const device &dev,
+      async_handler handler =
+          [](exception_list e) { glue::default_async_handler(e); })
+      : context{dev, handler} {
+    _impl->is_default_context = true;
+  }
+
+  explicit context(
+      detail::default_context_tag_t, const platform &plt,
+      async_handler handler =
+          [](exception_list e) { glue::default_async_handler(e); })
+      : context{plt, handler} {
+    _impl->is_default_context = true;
+  }
+
+  explicit context(
+      detail::default_context_tag_t, const std::vector<device> &deviceList,
+      async_handler handler =
+          [](exception_list e) { glue::default_async_handler(e); })
+      : context{deviceList, handler} {
+    _impl->is_default_context = true;
   }
 
   bool is_host() const {
@@ -135,11 +169,26 @@ public:
   }
 
   std::size_t AdaptiveCpp_hash_code() const {
+    if(_impl && _impl->is_default_context) {
+      std::size_t hash = 0;
+      _impl->devices.for_each_device([&](rt::device_id dev){
+        // xor ensures that device order does not matter
+        hash ^= dev.hash_code();
+      });
+      return hash;
+    }
     return std::hash<void*>{}(_impl.get());
   }
 
-  friend bool operator ==(const context& lhs, const context& rhs)
-  { return lhs._impl == rhs._impl; }
+  friend bool operator ==(const context& lhs, const context& rhs) {
+
+    if (lhs._impl && rhs._impl && lhs._impl->is_default_context &&
+        rhs._impl->is_default_context) {
+      return lhs._impl->devices == rhs._impl->devices;
+    }
+
+    return lhs._impl == rhs._impl;
+  }
 
   friend bool operator!=(const context& lhs, const context &rhs)
   { return !(lhs == rhs); }
@@ -147,7 +196,6 @@ public:
   rt::runtime* AdaptiveCpp_runtime() const {
     return _impl->requires_runtime.get();
   }
-
 
   [[deprecated("Use AdaptiveCpp_hash_code()")]]
   auto hipSYCL_hash_code() const {
@@ -179,7 +227,8 @@ private:
 
     context_impl() : devices{requires_runtime.get()} {}
 
-    async_handler handler;    
+    async_handler handler;
+    bool is_default_context = false;
   };
 
   std::shared_ptr<context_impl> _impl;
@@ -201,6 +250,10 @@ inline const rt::unique_device_list &extract_context_devices(const context &ctx)
   return ctx._impl->devices;
 }
 
+}
+
+inline context platform::khr_get_default_context() const {
+  return context{detail::default_context_tag_t{}, *this};
 }
 
 inline exception::exception(context ctx, std::error_code ec, const std::string& what_arg)

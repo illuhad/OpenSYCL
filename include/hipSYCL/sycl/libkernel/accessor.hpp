@@ -44,6 +44,7 @@
 #include "item.hpp"
 #include "multi_ptr.hpp"
 #include "atomic.hpp"
+#include "../specialized.hpp"
 #include "detail/local_memory_allocator.hpp"
 #include "detail/mobile_shared_ptr.hpp"
 
@@ -2148,8 +2149,8 @@ private:
     : _addr{addr}, _num_elements{r}
   {}
 
-  address _addr{};
-  range<dimensions> _num_elements;
+  specialized<address> _addr;
+  specialized<range<dimensions>> _num_elements;
 };
 
 namespace detail::accessor {

@@ -22,6 +22,7 @@
 #include "hipSYCL/runtime/code_object_invoker.hpp"
 #include "hipSYCL/runtime/cuda/cuda_event.hpp"
 #include "hipSYCL/runtime/kernel_configuration.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/reflection_map.hpp"
 
 
 // Forward declare CUstream_st instead of including cuda_runtime_api.h.
@@ -138,6 +139,7 @@ private:
   common::spin_lock _sscp_submission_spin_lock;
   glue::jit::cxx_argument_mapper _arg_mapper;
   kernel_configuration _config;
+  glue::jit::reflection_map _reflection_map;
 };
 
 }

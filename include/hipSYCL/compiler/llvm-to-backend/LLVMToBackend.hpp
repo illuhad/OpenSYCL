@@ -23,7 +23,7 @@
 #include <typeinfo>
 #include <functional>
 #include "AddressSpaceMap.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
 namespace llvm {
@@ -50,23 +50,6 @@ public:
 
   virtual ~LLVMToBackendTranslator() {}
 
-  // Do not use inside llvm-to-backend infrastructure targets to avoid
-  // requiring RTTI-enabled LLVM
-  template<auto& ConstantName, class T>
-  void setS2IRConstant(const T& value) {
-    static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
-                  "Unsupported type for S2 IR constant");
-
-    std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).name();
-    setS2IRConstant<T>(name, value);
-  }
-
-  template<class T>
-  void setS2IRConstant(const std::string& name, T value) {
-    setS2IRConstant(name, static_cast<const void*>(&value));
-  }
-
-  void setS2IRConstant(const std::string& name, const void* ValueBuffer);
   void setNoAliasKernelParam(const std::string& KernelName, int ParamIndex);
   void specializeKernelArgument(const std::string &KernelName, int ParamIndex,
                                 const void *ValueBuffer);
@@ -82,6 +65,8 @@ public:
   bool setBuildOption(const std::string& Option, const T& Value) {
     return setBuildOption(Option, std::to_string(Value));
   }
+
+  void setReflectionField(const std::string& name, uint64_t value);
 
   // Does partial transformation to backend-flavored LLVM IR
   bool partialTransformation(const std::string& LLVMIR, std::string& out);
@@ -232,9 +217,13 @@ private:
   int S2IRConstantBackendId;
   
   std::vector<std::string> OutliningEntrypoints;
+  // function call specializations might result in additional outlining entrypoints
+  // that we need to consider early on
+  std::vector<std::string> FunctionCallSpecializationOutliningEntrypoints;
   std::vector<std::string> Kernels;
 
   std::vector<std::string> Errors;
+  
   std::unordered_map<std::string, std::function<void(llvm::Module &)>> SpecializationApplicators;
   ExternalSymbolResolver SymbolResolver;
   bool HasExternalSymbolResolver = false;
@@ -244,6 +233,8 @@ private:
 
   std::vector<std::pair<std::string, std::vector<int>*>> FunctionsForDeadArgumentElimination;
   std::unordered_map<std::string, std::vector<int>> NoAliasParameters;
+
+  std::unordered_map<std::string, uint64_t> ReflectionFields;
 
 };
 

@@ -126,7 +126,8 @@ public:
     return AdaptiveCpp_hash_code();
   }
 
-
+  
+  context khr_get_default_context() const;
 private:
   rt::platform_id _platform;
   rt::runtime_keep_alive_token _requires_runtime;

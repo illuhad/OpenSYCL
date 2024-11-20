@@ -62,6 +62,9 @@ private:
   std::unique_ptr<hip_allocator> _allocator;
   std::unique_ptr<hip_event_pool> _event_pool;
   int _dev;
+  // target amdgcn architecture in numeric, hexadecimal form, e.g.
+  // gfx906 is represented as 0x906.
+  int _numeric_architecture;
 };
 
 class hip_hardware_manager : public backend_hardware_manager

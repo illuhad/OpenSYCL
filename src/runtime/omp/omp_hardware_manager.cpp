@@ -265,6 +265,13 @@ omp_hardware_context::get_property(device_uint_property prop) const {
   case device_uint_property::vendor_id:
     return std::numeric_limits<std::size_t>::max();
     break;
+  case device_uint_property::architecture:
+    // TODO
+    return 0;
+    break;
+  case device_uint_property::backend_id:
+    return static_cast<int>(backend_id::omp);
+    break;
   }
   assert(false && "Invalid device property");
   return 0;

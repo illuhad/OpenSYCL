@@ -167,6 +167,9 @@ hip_queue::hip_queue(hip_backend *be, device_id dev, int priority)
       _kernel_cache{kernel_cache::get()} {
   this->activate_device();
 
+  _reflection_map = glue::jit::construct_default_reflection_map(
+      be->get_hardware_manager()->get_device(dev.get_id()));
+
   hipError_t err;
   if(priority == 0) {
     err = hipStreamCreateWithFlags(&_stream, hipStreamNonBlocking);
@@ -642,10 +645,11 @@ result hip_queue::submit_sscp_kernel_from_code_object(
     if(kernel_names.size() == 1) {
       err = glue::jit::dead_argument_elimination::compile_kernel(
           translator.get(), hcf_object, selected_image_name, _config,
-          binary_configuration_id, compiled_image);
+          binary_configuration_id, _reflection_map, compiled_image);
     } else {
-      err = glue::jit::compile(translator.get(),
-        hcf_object, selected_image_name, _config, compiled_image);
+      err =
+          glue::jit::compile(translator.get(), hcf_object, selected_image_name,
+                             _config, _reflection_map, compiled_image);
     }
     
     if(!err.is_success()) {
