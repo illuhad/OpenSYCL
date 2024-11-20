@@ -469,6 +469,13 @@ std::size_t ocl_hardware_context::get_property(device_uint_property prop) const 
     return static_cast<std::size_t>(
         info_query<CL_DEVICE_VENDOR_ID, cl_uint>(_dev));
     break;
+  case device_uint_property::architecture:
+    // TODO
+    return 0;
+    break;
+  case device_uint_property::backend_id:
+    return static_cast<int>(backend_id::ocl);
+    break;
   }
   assert(false && "Invalid device property");
   std::terminate();

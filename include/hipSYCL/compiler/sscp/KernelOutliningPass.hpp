@@ -20,6 +20,8 @@ namespace compiler {
 
 class EntrypointPreparationPass : public llvm::PassInfoMixin<EntrypointPreparationPass> {
 public:
+  EntrypointPreparationPass(bool ExportByDefault = false);
+
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 
   const std::vector<std::string>& getKernelNames() const {
@@ -38,6 +40,7 @@ private:
   std::vector<std::string> KernelNames;
   std::vector<std::string> OutliningEntrypoints;
   std::vector<std::string> NonKernelOutliningEntrypoints;
+  bool ExportAll;
 };
 
 //  Removes all code not belonging to kernels

@@ -93,7 +93,9 @@ enum class device_uint_property {
   printf_buffer_size,
   partition_max_sub_devices,
 
-  vendor_id
+  vendor_id,
+  architecture,
+  backend_id
 };
 
 enum class device_uint_list_property {

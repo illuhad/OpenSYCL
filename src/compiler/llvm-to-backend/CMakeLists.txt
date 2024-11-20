@@ -121,6 +121,7 @@ if(WITH_SSCP_COMPILER)
       GlobalSizesFitInI32OptPass.cpp
       GlobalInliningAttributorPass.cpp
       DeadArgumentEliminationPass.cpp
+      ProcessS2ReflectionPass.cpp
       ../sscp/KernelOutliningPass.cpp)
 
   if(WITH_LLVM_TO_SPIRV)

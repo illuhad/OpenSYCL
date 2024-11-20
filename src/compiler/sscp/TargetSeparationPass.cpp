@@ -99,13 +99,18 @@ public:
 
 static llvm::cl::opt<bool> SSCPEmitHcf{
     "acpp-sscp-emit-hcf", llvm::cl::init(false),
-    llvm::cl::desc{"Emit HCF from hipSYCL LLVM SSCP compilation flow"}};
+    llvm::cl::desc{"Emit HCF from AdaptiveCpp LLVM SSCP compilation flow"}};
 
 static llvm::cl::opt<bool> PreoptimizeSSCPKernels{
     "acpp-sscp-preoptimize", llvm::cl::init(false),
     llvm::cl::desc{
         "Preoptimize SYCL kernels in LLVM IR instead of embedding unoptimized kernels and relying "
-        "on optimization at runtime. This is mainly for hipSYCL developers and NOT supported!"}};
+        "on optimization at runtime. This is mainly for AdaptiveCpp developers and NOT supported!"}};
+
+static llvm::cl::opt<bool> ExportAllSymbols{
+    "acpp-sscp-export-all", llvm::cl::init(false),
+    llvm::cl::desc{
+        "(experimental) export all functions for JIT-time linking"}};
 
 static const char *SscpIsHostIdentifier = "__acpp_sscp_is_host";
 static const char *SscpIsDeviceIdentifier = "__acpp_sscp_is_device";
@@ -279,7 +284,7 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
     }
   }
 
-  EntrypointPreparationPass EPP;
+  EntrypointPreparationPass EPP{ExportAllSymbols};
   EPP.run(*DeviceModule, DeviceMAM);
   
   ExportedSymbolsOutput = EPP.getNonKernelOutliningEntrypoints();

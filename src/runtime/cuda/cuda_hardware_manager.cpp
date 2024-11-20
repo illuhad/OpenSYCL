@@ -359,6 +359,12 @@ cuda_hardware_context::get_property(device_uint_property prop) const {
   case device_uint_property::vendor_id:
     return 4318;
     break;
+  case device_uint_property::architecture:
+    return _properties->major * 10 + _properties->minor;
+    break;
+  case device_uint_property::backend_id:
+    return static_cast<int>(backend_id::cuda);
+    break;
   }
   assert(false && "Invalid device property");
   std::terminate();

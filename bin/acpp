@@ -363,7 +363,10 @@ class acpp_config:
       'stdpar-unconditional-offload' : option("--acpp-stdpar-unconditional-offload", "ACPP_STDPAR_UNCONDITIONAL_OFFLOAD", "default-is-stdpar-unconditional-offload",
 """  Normally, heuristics are employed to determine whether algorithms should be offloaded.
   This particularly affects small problem sizes. If this flag is set, supported parallel STL
-  algorithms will be offloaded unconditionally.""")
+  algorithms will be offloaded unconditionally."""),
+      'is-export-all' : option("--acpp-export-all", "ACPP_EXPORT_ALL", "default-export-all",
+"""  (Experimental) Treat all functions implicitly as SYCL_EXTERNAL. Only supported with generic target.
+  This currently only works with translation units that include the sycl.hpp header.""")
     }
 
 
@@ -809,6 +812,13 @@ class acpp_config:
   def is_explicit_multipass(self):
     try:
       return self._is_flag_set("is-explicit-multipass")
+    except OptionNotSet:
+      return False
+
+  @property
+  def is_export_all(self):
+    try:
+      return self._is_flag_set("is-export-all")
     except OptionNotSet:
       return False
 
@@ -1521,6 +1531,9 @@ class llvm_sscp_invocation:
   def get_cxx_flags(self):
     flags = ["-D__ACPP_ENABLE_LLVM_SSCP_TARGET__",
             "-Xclang", "-disable-O0-optnone", "-mllvm", "-acpp-sscp"]
+    
+    if self._config.is_export_all:
+      flags += ["-mllvm","-acpp-sscp-export-all"]
 
     sscp_compile_opts = []
     if ("-Ofast" in self._config.forwarded_compiler_arguments or

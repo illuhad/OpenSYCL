@@ -70,7 +70,7 @@ inline llvm::Error loadModuleFromString(const std::string &LLVMIR, llvm::LLVMCon
 }
 
 template<class F>
-inline void constructPassBuilder(F&& handler) {
+inline auto withPassBuilder(F&& handler) {
   llvm::LoopAnalysisManager LAM;
   llvm::FunctionAnalysisManager FAM;
   llvm::CGSCCAnalysisManager CGAM;
@@ -82,11 +82,11 @@ inline void constructPassBuilder(F&& handler) {
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-  handler(PB, LAM, FAM, CGAM, MAM);
+  return handler(PB, LAM, FAM, CGAM, MAM);
 }
 
 template<class F>
-inline void constructPassBuilderAndMAM(F&& handler) {
+inline auto withPassBuilderAndMAM(F&& handler) {
   llvm::LoopAnalysisManager LAM;
   llvm::FunctionAnalysisManager FAM;
   llvm::CGSCCAnalysisManager CGAM;
@@ -98,7 +98,7 @@ inline void constructPassBuilderAndMAM(F&& handler) {
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-  handler(PB, MAM);
+  return handler(PB, MAM);
 }
 
 

@@ -21,6 +21,7 @@
 #include "hipSYCL/runtime/kernel_cache.hpp"
 #include "hipSYCL/runtime/kernel_configuration.hpp"
 #include "hipSYCL/runtime/application.hpp"
+#include "jit-reflection/reflection_map.hpp"
 #include <cstddef>
 #include <vector>
 #include <atomic>
@@ -230,17 +231,13 @@ inline rt::result compile(compiler::LLVMToBackendTranslator *translator,
                           const std::string &source,
                           const rt::kernel_configuration &config,
                           const symbol_list_t& imported_symbol_names,
+                          const reflection_map& refl_map,
                           std::string &output) {
 
   assert(translator);
   runtime_linker configure_linker {translator, imported_symbol_names};
 
   // Apply configuration
-  translator->setS2IRConstant<sycl::jit::current_backend, int>(
-      translator->getBackendId());
-  for(const auto& entry : config.s2_ir_entries()) {
-    translator->setS2IRConstant(entry.get_name(), entry.get_data_buffer());
-  }
   if(translator->getKernels().size() == 1) {
     // Currently we only can specialize kernel arguments for the 
     // single-kernel code object model
@@ -269,6 +266,11 @@ inline rt::result compile(compiler::LLVMToBackendTranslator *translator,
 
   for(const auto& flag : config.build_flags()) {
     translator->setBuildFlag(rt::to_string(flag));
+  }
+
+  // Set up JIT-time reflection for the code we compile
+  for(const auto& KV : refl_map) {
+    translator->setReflectionField(KV.first, KV.second);
   }
 
   // Transform code
@@ -307,6 +309,7 @@ inline rt::result compile(compiler::LLVMToBackendTranslator* translator,
                           const common::hcf_container* hcf,
                           const std::string& image_name,
                           const rt::kernel_configuration &config,
+                          const reflection_map& refl_map,
                           std::string &output) {
   assert(hcf);
   assert(hcf->root_node());
@@ -346,13 +349,15 @@ inline rt::result compile(compiler::LLVMToBackendTranslator* translator,
   symbol_list_t imported_symbol_names =
       target_image_node->get_as_list("imported-symbols");
 
-  return compile(translator, source, config, imported_symbol_names, output);
+  return compile(translator, source, config, imported_symbol_names, refl_map,
+                 output);
 }
 
 inline rt::result compile(compiler::LLVMToBackendTranslator* translator,
                           rt::hcf_object_id hcf_object,
                           const std::string& image_name,
                           const rt::kernel_configuration &config,
+                          const reflection_map& refl_map,
                           std::string &output) {
   const common::hcf_container* hcf = rt::hcf_cache::get().get_hcf(hcf_object);
   if(!hcf) {
@@ -362,17 +367,20 @@ inline rt::result compile(compiler::LLVMToBackendTranslator* translator,
   }
 
   return compile(translator, hcf, image_name, config,
-                 output);
+                 refl_map, output);
 }
 
 namespace dead_argument_elimination {
 // Compiles with dead-argument-elimination for the kernels, and saves
 // the retained argument mask in the appdb. This only works for single-kernel
 // compilations!
-inline rt::result compile_kernel(
-    compiler::LLVMToBackendTranslator *translator, rt::hcf_object_id hcf_object,
-    const std::string &image_name, const rt::kernel_configuration &config,
-    rt::kernel_configuration::id_type binary_id, std::string &output) {
+inline rt::result compile_kernel(compiler::LLVMToBackendTranslator *translator,
+                                 rt::hcf_object_id hcf_object,
+                                 const std::string &image_name,
+                                 const rt::kernel_configuration &config,
+                                 rt::kernel_configuration::id_type binary_id,
+                                 const reflection_map &refl_map,
+                                 std::string &output) {
 
   assert(translator->getKernels().size() == 1);
 
@@ -386,7 +394,8 @@ inline rt::result compile_kernel(
 
         translator->enableDeadArgumentElminiation(translator->getKernels()[0],
                                                   retained_args);
-        err = compile(translator, hcf_object, image_name, config, output);
+        err = compile(translator, hcf_object, image_name, config, refl_map,
+                      output);
       });
 
   return err;

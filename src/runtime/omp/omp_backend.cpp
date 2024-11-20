@@ -38,14 +38,14 @@ namespace rt {
 
 namespace {
 
-std::unique_ptr<inorder_queue> make_omp_queue(device_id dev) {
-  return std::make_unique<omp_queue>(dev.get_backend());
+std::unique_ptr<inorder_queue> make_omp_queue(omp_backend* be, device_id dev) {
+  return std::make_unique<omp_queue>(be, dev.get_id());
 }
 
 std::unique_ptr<multi_queue_executor>
 create_multi_queue_executor(omp_backend *b) {
-  return std::make_unique<multi_queue_executor>(*b, [](device_id dev) {
-    return make_omp_queue(dev);
+  return std::make_unique<multi_queue_executor>(*b, [b](device_id dev) {
+    return make_omp_queue(b, dev);
   });
 }
 

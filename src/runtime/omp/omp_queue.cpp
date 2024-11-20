@@ -21,6 +21,7 @@
 #include "hipSYCL/runtime/instrumentation.hpp"
 #include "hipSYCL/runtime/kernel_launcher.hpp"
 #include "hipSYCL/runtime/omp/omp_event.hpp"
+#include "hipSYCL/runtime/omp/omp_backend.hpp"
 #include "hipSYCL/runtime/operations.hpp"
 #include "hipSYCL/runtime/queue_completion_event.hpp"
 #include "hipSYCL/runtime/signal_channel.hpp"
@@ -210,9 +211,13 @@ launch_kernel_from_so(omp_sscp_executable_object::omp_sscp_kernel *kernel,
     // get page aligned local memory from heap
     static thread_local std::vector<char> local_memory;
 
-    const auto page_size = get_page_size();
-    local_memory.resize(shared_memory + page_size);
-    auto aligned_local_memory = reinterpret_cast<void*>(next_multiple_of(reinterpret_cast<std::uint64_t>(local_memory.data()), page_size));
+    // compiler/libkernel builtins assume that local mem is aligned to at least
+    // 512 byte boundaries
+    const auto local_mem_alignment = std::max(std::size_t{512}, get_page_size());
+    local_memory.resize(shared_memory + local_mem_alignment);
+    auto aligned_local_memory = reinterpret_cast<void *>(
+        next_multiple_of(reinterpret_cast<std::uint64_t>(local_memory.data()),
+                         local_mem_alignment));
 
 #ifdef _OPENMP
 #pragma omp for collapse(3)
@@ -232,9 +237,12 @@ launch_kernel_from_so(omp_sscp_executable_object::omp_sscp_kernel *kernel,
 #endif
 } // namespace
 
-omp_queue::omp_queue(backend_id id)
-    : _backend_id(id), _sscp_code_object_invoker{this},
-      _kernel_cache{kernel_cache::get()} {}
+omp_queue::omp_queue(omp_backend* be, int dev)
+    : _backend_id{be->get_unique_backend_id()}, _sscp_code_object_invoker{this},
+      _kernel_cache{kernel_cache::get()} {
+  _reflection_map = glue::jit::construct_default_reflection_map(
+      be->get_hardware_manager()->get_device(dev));
+}
 
 omp_queue::~omp_queue() { _worker.halt(); }
 
@@ -439,7 +447,7 @@ result omp_queue::submit_sscp_kernel_from_code_object(
 
     // Lower kernels to binary
     auto err = glue::jit::compile(translator.get(), hcf, selected_image_name,
-                                  _config, compiled_image);
+                                  _config, _reflection_map, compiled_image);
 
     if (!err.is_success()) {
       register_error(err);

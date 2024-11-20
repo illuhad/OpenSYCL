@@ -257,6 +257,9 @@ void canonicalizeKernelParameters(llvm::Function* F, llvm::Module& M) {
 
 }
 
+EntrypointPreparationPass::EntrypointPreparationPass(bool ExportByDefault)
+: ExportAll{ExportByDefault} {}
+
 llvm::PreservedAnalyses
 EntrypointPreparationPass::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
 
@@ -264,6 +267,24 @@ EntrypointPreparationPass::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM)
   static constexpr const char* SSCPOutliningMarker = "hipsycl_sscp_outlining";
 
   llvm::SmallSet<std::string, 16> Kernels;
+
+
+  llvm::DenseSet<llvm::Function*> MarkedFunctions;
+  auto MarkThisFunctionForOutlining = [&](llvm::Function* F) {
+    HIPSYCL_DEBUG_INFO << "Found SSCP outlining entrypoint: " << F->getName() << "\n";
+    // Make kernel have external linkage to avoid having everything optimized away
+    F->setLinkage(llvm::GlobalValue::ExternalLinkage);
+
+    // If we have a definition, we need to perform outlining.
+    // Otherwise, we would need to treat the function as imported --
+    // however this cannot really happen as clang does not codegen our
+    // attribute((annotate("hipsycl_sscp_outlining"))) for declarations
+    // without definition.
+    if(F->size() > 0 && !MarkedFunctions.contains(F)) {
+      this->OutliningEntrypoints.push_back(F->getName().str());
+      MarkedFunctions.insert(F);
+    }
+  };
 
   utils::findFunctionsWithStringAnnotationsWithArg(M, [&](llvm::Function* F, llvm::StringRef Annotation, llvm::Constant* Argument){
     if(F) {
@@ -295,21 +316,19 @@ EntrypointPreparationPass::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM)
         this->KernelNames.push_back(F->getName().str());
         Kernels.insert(F->getName().str());
       }
-      if(Annotation.compare(SSCPOutliningMarker) == 0) {
-        HIPSYCL_DEBUG_INFO << "Found SSCP outlining entrypoint: " << F->getName() << "\n";
-        // Make kernel have external linkage to avoid having everything optimized away
-        F->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-        // If we have a definition, we need to perform outlining.
-        // Otherwise, we would need to treat the function as imported --
-        // however this cannot really happen as clang does not codegen our
-        // attribute((annotate("hipsycl_sscp_outlining"))) for declarations
-        // without definition.
-        if(F->size() > 0)
-          this->OutliningEntrypoints.push_back(F->getName().str());
+      if(Annotation.compare(SSCPOutliningMarker) == 0) {
+        MarkThisFunctionForOutlining(F);
       }
     }
   });
+
+  if(ExportAll) {
+    for(auto& F: M) {
+      if (!F.isIntrinsic() && F.getLinkage() != llvm::GlobalValue::LinkageTypes::InternalLinkage)
+        MarkThisFunctionForOutlining(&F);
+    }
+  }
 
 
   for(const auto& EP : OutliningEntrypoints) {
