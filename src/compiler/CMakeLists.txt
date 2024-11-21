@@ -106,9 +106,11 @@ else()
     frontend/AdaptiveCppClangPlugin.cpp
     PARTIAL_SOURCES_INTENDED)
   set_property(TARGET acpp-frontend PROPERTY POSITION_INDEPENDENT_CODE ON)
-  target_include_directories(obj.acpp-frontend PRIVATE ${LLVM_MAIN_SRC_DIR}/../clang/include)
-  get_property(clang_libs GLOBAL PROPERTY CLANG_STATIC_LIBS)
-  add_dependencies(acpp-frontend ${clang_libs})
+  target_include_directories(obj.acpp-frontend PRIVATE
+    ${LLVM_MAIN_SRC_DIR}/../clang/include
+    ${LLVM_BINARY_DIR}/tools/clang/include
+  )
+  
 
   set_property(
       TARGET clang-cpp
