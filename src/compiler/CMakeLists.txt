@@ -107,12 +107,14 @@ else()
     PARTIAL_SOURCES_INTENDED)
   set_property(TARGET acpp-frontend PROPERTY POSITION_INDEPENDENT_CODE ON)
   target_include_directories(obj.acpp-frontend PRIVATE ${LLVM_MAIN_SRC_DIR}/../clang/include)
+  get_property(clang_libs GLOBAL PROPERTY CLANG_STATIC_LIBS)
+  add_dependencies(acpp-frontend ${clang_libs})
 
   set_property(
       TARGET clang-cpp
       APPEND PROPERTY
           LINK_LIBRARIES obj.acpp-frontend
-  ) 
+  )
 
   add_llvm_pass_plugin(${COMPILER_LIBRARY_NAME}
     NO_MODULE
@@ -133,8 +135,6 @@ function(configure_target)
   )
 
   set(target ${CONFIGURE_LLVM_TARGET_TARGET})
-
-  message(WARNING "${target} Source: ${ACPP_SOURCE_ROOT} Binary: ${ACPP_BINARY_ROOT}")
 
   target_include_directories(${target} PRIVATE
     ${ACPP_SOURCE_ROOT}/include
