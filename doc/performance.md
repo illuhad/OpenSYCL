@@ -32,6 +32,32 @@ The other compilation flows `omp`, `cuda`, `hip` should mainly be used when *int
 * If you are unsure, the compilation flags used by clang-based compilers under the hood can be inspected using `<clang invocation> -###`. This also works for AdaptiveCpp's clang-based compilation flows. When in doubt, use this mechanism to align compilation flags between compilers.
 * The compiler invocation that `acpp` generates can be printed and its flags inspected with `--acpp-dryrun`.
 
+## SYCL memory management: USM vs buffers
+
+There are three kinds of unified shared memory (USM) in SYCL:
+
+* host USM (`sycl::malloc_host`). This is device-accessible host memory, similarly to CUDA pinned memory. It is primarily useful when the memory is only rarely accessed on GPU and a full data copy might be unnecessary.
+* device USM (`sycl::malloc_device`). This is device-resident memory that is unavailable on the host or other devices. It always stays on that device, and is similar to CUDA's `cudaMalloc`. It provides very low overhead. Explicit data transfers mechanisms need to be invoked by the user to migrate data between host and device. Device USM is usually the most efficient memory for usage on device in SYCL.
+* shared USM (`sycl::malloc_shared`). This is memory that can automatically migrate between host and device, or potentially other devices, similarly to e.g. CUDA's cudaMallocManaged.
+
+AdaptiveCpp supports all forms of USM universally on all backends and supported hardware.
+
+Additionally, SYCL provides the `sycl::buffer`/`sycl::accessor` model.
+
+**All types of USM have significantly lower host-side runtime overhead than buffers**, and can substantially outperform buffers, especially for short running kernels where submission latencies matter. This is especially true when in-order queues are used. See e.g. this paper for details: https://dl.acm.org/doi/fullHtml/10.1145/3648115.3648120
+This is because with USM, the programmer can express dependencies statically, while the SYCL buffer-accessor model must figure out dependencies at runtime. Similarly, USM allows to statically express allocation/deallocation and data transfers, while with buffers non-trivial mechanisms in the SYCL runtime need to automatically manage these operations. This can add overhead.
+
+Furthermore, buffer accessors are not lightweight objects, and can increase register pressure in kernels compared to USM pointers.
+
+Performance of shared USM typically depends on memory access patterns and driver quality. Depending on the operating system and hardware, very good performance is also possible with shared USM (e.g. on NVIDIA GPUs). For some configurations, in particular AMD GPUs without the XNACK feature, performance may be degraded. 
+Performance can be improved using the `queue::prefetch` performance hint.
+Shared USM is the most productive memory management model that SYCL has, and can be a great solution for e.g. rapid prototyping or porting CPU code.
+
+In summary:
+* **When control and maximum performance is needed, use device USM (`sycl::malloc_device`)**
+* **When maximum productivity is needed, use shared USM (`sycl::malloc_shared`)**
+* **Never use buffers. They do not bring significant advantages compared to USM, but can introduce substantial drawbacks**
+
 ## Ahead-of-time vs JIT compilation
 
 The compilation targets `omp`, `hip` and `cuda` perform ahead-of-time compilation. This means they depend strongly on the user to provide correct optimization flags when compiling.
