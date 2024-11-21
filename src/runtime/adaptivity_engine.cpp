@@ -153,6 +153,9 @@ bool is_likely_invariant_argument(common::db::kernel_entry &kernel_entry,
 }
 
 int determine_ptr_alignment(uint64_t ptrval) {
+  if(ptrval == 0)
+    return 0;
+  
 #if defined(__GNUC__) && !defined(__llvm__) && !defined(__INTEL_COMPILER) && \
     !defined(__NVCOMPILER)
   // gcc supports __builtin_ctz, but versions prior to 10
@@ -165,8 +168,8 @@ int determine_ptr_alignment(uint64_t ptrval) {
 #endif
 
 #ifdef ACPP_HAS_BUILTIN_CTZ
-  int max_alignment = std::min(1 << __builtin_ctz(ptrval), 32);
-  return max_alignment > 4 ? max_alignment : 0;
+  uint64_t alignment = 1ull << __builtin_ctz(ptrval);
+  return alignment >= 32 ? 32 : 0;
 #else
   return 0;
 #endif
