@@ -110,7 +110,6 @@ else()
     ${LLVM_MAIN_SRC_DIR}/../clang/include
     ${LLVM_BINARY_DIR}/tools/clang/include
   )
-  
 
   set_property(
       TARGET clang-cpp

@@ -159,11 +159,11 @@ if(WITH_ROCM_BACKEND)
   else()
     # Supress warnings because wrongly set CXX arguments
     target_compile_options(rt-backend-hip PRIVATE -Wno-unused-command-line-argument)
-    target_link_libraries(rt-backend-hip PRIVATE acpp-rt  hip::host)
+    target_link_libraries(rt-backend-hip PRIVATE hip::host)
   endif()
 
   target_compile_options(rt-backend-hip PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
-  target_link_libraries(rt-backend-hip PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
+  target_link_libraries(rt-backend-hip PRIVATE acpp-rt ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
 
   if(WITH_SSCP_COMPILER)
     target_compile_definitions(rt-backend-hip PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
