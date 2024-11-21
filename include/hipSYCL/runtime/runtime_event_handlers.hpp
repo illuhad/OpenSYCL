@@ -33,8 +33,11 @@ struct allocation_info {
 
 class runtime_event_handlers {
 public:
+  runtime_event_handlers();
   void on_new_allocation(const void*, std::size_t, const allocation_info& info);
   void on_deallocation(const void* ptr);
+private:
+  bool _needs_allocation_tracking;
 };
 
 

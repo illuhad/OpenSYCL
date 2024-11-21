@@ -54,12 +54,18 @@ This optimization process is complete when the following warning is no longer pr
 
 The extent of this can be controlled using the environment variable `ACPP_ADAPTIVITY_LEVEL`. A value of 0 disables the feature. The default is 1. Higher levels are expected to result in higher peak performance, but may require more application runs to converge to this performance. The default level of 1 usually guarantees peak performance for the second application run.
 
+Setting `ACPP_ENABLE_ALLOCATION_TRACKING=1` enables additional optimizations at adaptivity level 1.
+
 At adaptivity level >= 2, AdaptiveCpp will enable additional, aggressive optimizations.
 In particular, AdaptiveCpp will attempt to detect invariant kernel arguments, and hardwire those as constants during JIT time. In some cases, this can result in substantial performance increases. It is thus advisable to try setting `ACPP_ADAPTIVITY_LEVEL=2` and running the application a couple of times (typically 3-4 times).
 
 Note: Applications that are highly latency-sensitive may notice a slightly increased kernel launch latency at adaptivity level >= 2 due to the additional analysis steps at runtime.
 
 **For peak performance, you should not disable adaptivity, and run the application until the warning above is no longer printed.**
+
+We recommend:
+* Experiment with `ACPP_ADAPTIVITY_LEVEL=1` and `ACPP_ADAPTIVITY_LEVEL=2`
+* Experiment with `ACPP_ENABLE_ALLOCATION_TRACKING=1` and `ACPP_ENABLE_ALLOCATION_TRACKING=0`.
 
 *Note: Adaptivity levels higher than 2 are currently not implemented.*
 
