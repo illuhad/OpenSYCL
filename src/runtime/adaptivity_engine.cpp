@@ -154,6 +154,16 @@ bool is_likely_invariant_argument(common::db::kernel_entry &kernel_entry,
 
   return false;
 }
+
+int determine_ptr_alignment(uint64_t ptrval) {
+#if __has_builtin(__builtin_ctz)
+  int max_alignment = std::min(1 << __builtin_ctz(ptrval), 32);
+  return max_alignment > 4 ? max_alignment : 0;
+#else
+  return 0;
+#endif
+}
+
 }
 
 kernel_adaptivity_engine::kernel_adaptivity_engine(
@@ -229,6 +239,23 @@ kernel_adaptivity_engine::finalize_binary_configuration(
         if (has_annotation(_kernel_info, i,
                            hcf_kernel_info::annotation_type::noalias)) {
           config.set_kernel_param_flag(i, kernel_param_flag::noalias);
+        }
+      }
+    }
+
+    // Handle auto alignment specialization
+    for(int i = 0; i < _kernel_info->get_num_parameters(); ++i) {
+      std::size_t arg_size = _kernel_info->get_argument_size(i);
+      if (_kernel_info->get_argument_type(i) == hcf_kernel_info::argument_type::pointer) {
+        uint64_t buffer = 0;
+        std::memcpy(&buffer, _arg_mapper.get_mapped_args()[i],
+                    _kernel_info->get_argument_size(i));
+        int alignment = determine_ptr_alignment(buffer);
+        if(alignment > 0) {
+          HIPSYCL_DEBUG_INFO
+              << "adaptivity_engine: Inferred pointer alignment of "
+              << alignment << " for kernel argument " << i << std::endl;
+          config.set_known_alignment(i, alignment);
         }
       }
     }

@@ -117,6 +117,7 @@ if(WITH_SSCP_COMPILER)
       LLVMToBackend.cpp 
       AddressSpaceInferencePass.cpp
       KnownGroupSizeOptPass.cpp
+      KnownPtrParamAlignmentOptPass.cpp
       GlobalSizesFitInI32OptPass.cpp
       GlobalInliningAttributorPass.cpp
       DeadArgumentEliminationPass.cpp

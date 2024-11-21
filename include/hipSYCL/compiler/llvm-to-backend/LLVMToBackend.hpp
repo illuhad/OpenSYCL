@@ -57,6 +57,8 @@ public:
                              const std::vector<std::string> &ReplacementCalls,
                              bool OverrideOnlyUndefined=true);
 
+  void setKnownPtrParamAlignment(const std::string &FunctionName, int ParamIndex, int Alignment);
+
   bool setBuildFlag(const std::string &Flag);
   bool setBuildOption(const std::string &Option, const std::string &Value);
   bool setBuildToolArguments(const std::string &ToolName, const std::vector<std::string> &Args);
@@ -234,6 +236,8 @@ private:
   std::vector<std::pair<std::string, std::vector<int>*>> FunctionsForDeadArgumentElimination;
   std::unordered_map<std::string, std::vector<int>> NoAliasParameters;
 
+  // map from kernel name to list of (param index, alignment)
+  std::unordered_map<std::string, std::vector<std::pair<int, int>>> KnownPtrParamAlignments;
   std::unordered_map<std::string, uint64_t> ReflectionFields;
 
 };

@@ -246,11 +246,15 @@ inline rt::result compile(compiler::LLVMToBackendTranslator *translator,
                                           entry.first, &entry.second);
     }
 
-    for (int i = 0; i < static_cast<int>(config.get_num_kernel_param_indices());
-      ++i) {
+    int num_param_indices = static_cast<int>(config.get_num_kernel_param_indices());
+    for (int i = 0; i < num_param_indices; ++i) {
       if (config.has_kernel_param_flag(i, rt::kernel_param_flag::noalias)) {
         translator->setNoAliasKernelParam(translator->getKernels().front(), i);
       }
+    }
+    for(const auto& entry : config.known_alignments()) {
+      translator->setKnownPtrParamAlignment(translator->getKernels().front(),
+                                            entry.first, entry.second);
     }
   }
   for(const auto& entry : config.function_call_specialization_config()) {
