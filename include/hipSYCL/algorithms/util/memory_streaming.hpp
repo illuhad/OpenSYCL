@@ -15,6 +15,7 @@
 #include "hipSYCL/sycl/device.hpp"
 #include "hipSYCL/sycl/libkernel/nd_item.hpp"
 #include "hipSYCL/sycl/info/device.hpp"
+#include "hipSYCL/sycl/jit.hpp"
 #include <cstddef>
 
 
