@@ -134,8 +134,10 @@ function(configure_target)
 
   set(target ${CONFIGURE_LLVM_TARGET_TARGET})
 
+  message(WARNING "${target} Source: ${ACPP_SOURCE_ROOT} Binary: ${ACPP_BINARY_ROOT}")
+
   target_include_directories(${target} PRIVATE
-    ../../include
+    ${ACPP_SOURCE_ROOT}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${ACPP_BINARY_ROOT}/include)
   target_include_directories(${target} SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
