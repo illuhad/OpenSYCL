@@ -57,7 +57,10 @@ For shared USM specifically:
   * On Intel GPUs, performance is typically good, depending on memory access patterns. On dedicated Intel GPUs, note that current hardware and drivers do not support data migration at page granularity, i.e. always entire allocations will be migrated at a time if data is accessed on host/device. This is not an issue on iGPU.
   * On AMD GPUs, performance can be good, but for some driver/OS/hardware setups may be substantially degraded if the XNACK hardware feature is not available.
 * Performance of shared USM can often be improved using the `queue::prefetch()` performance hint.
+
+
 Shared USM is the most productive memory management model that SYCL has, and can be a great solution for e.g. rapid prototyping or porting CPU code. **Shared USM is also less verbose and more productive than using SYCL buffers!**
+
 
 In summary:
 * **When control and maximum performance is needed, use device USM (`sycl::malloc_device`)**
