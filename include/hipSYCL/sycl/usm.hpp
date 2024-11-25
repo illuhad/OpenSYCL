@@ -35,6 +35,8 @@ namespace sycl {
 
 inline void *malloc_device(size_t num_bytes, const device &dev,
                            const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
   return detail::select_device_allocator(dev)->allocate(0, num_bytes);
 }
 
@@ -55,6 +57,8 @@ T* malloc_device(std::size_t count, const queue &q) {
 
 inline void *aligned_alloc_device(std::size_t alignment, std::size_t num_bytes,
                                   const device &dev, const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
   return detail::select_device_allocator(dev)->allocate(alignment, num_bytes);
 }
 
@@ -79,6 +83,9 @@ T *aligned_alloc_device(std::size_t alignment, std::size_t count,
 // Restricted USM
 
 inline void *malloc_host(std::size_t num_bytes, const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
+
   return detail::select_usm_allocator(ctx)->allocate_optimized_host(0, num_bytes);
 }
 
@@ -96,6 +103,9 @@ template <typename T> T *malloc_host(std::size_t count, const queue &q) {
 
 inline void *malloc_shared(std::size_t num_bytes, const device &dev,
                            const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
+
   return detail::select_usm_allocator(ctx, dev)->allocate_usm(num_bytes);
 }
 
@@ -114,6 +124,9 @@ template <typename T> T *malloc_shared(std::size_t count, const queue &q) {
 
 inline void *aligned_alloc_host(std::size_t alignment, std::size_t num_bytes,
                                 const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
+
   return detail::select_usm_allocator(ctx)->allocate_optimized_host(alignment,
                                                                     num_bytes);
 }
@@ -137,6 +150,9 @@ T *aligned_alloc_host(std::size_t alignment, std::size_t count,
 
 inline void *aligned_alloc_shared(std::size_t alignment, std::size_t num_bytes,
                                   const device &dev, const context &ctx) {
+  if(num_bytes == 0)
+    return nullptr;
+
   return detail::select_usm_allocator(ctx, dev)->allocate_usm(num_bytes);
 }
 
@@ -224,7 +240,8 @@ T *aligned_alloc(std::size_t alignment, std::size_t count, const sycl::queue &q,
 }
 
 inline void free(void *ptr, const sycl::context &ctx) {
-  return detail::select_usm_allocator(ctx)->free(ptr);
+  if(ptr)
+    detail::select_usm_allocator(ctx)->free(ptr);
 }
 
 inline void free(void *ptr, const sycl::queue &q) {
