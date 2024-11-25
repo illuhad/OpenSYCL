@@ -47,6 +47,7 @@ inline constexpr int builtin_memory_order(memory_order o) noexcept {
 // atomics. We workaround this for two load/store instructions that we
 // need for the algorithms library using inline assembly.
 __attribute__((always_inline)) 
+HIPSYCL_HIPLIKE_BUILTIN
 void __acpp_cuda_atomic_store_device_rel_i32(int32_t *ptr, int32_t x) {
   asm volatile("st.release.gpu.s32 [%0], %1;"
               :
@@ -54,7 +55,8 @@ void __acpp_cuda_atomic_store_device_rel_i32(int32_t *ptr, int32_t x) {
               : "memory");
 }
 
-__attribute__((always_inline)) 
+__attribute__((always_inline))
+HIPSYCL_HIPLIKE_BUILTIN
 int32_t __acpp_cuda_atomic_load_device_acq_i32(int32_t *ptr) {
   int32_t result;
   asm volatile("ld.acquire.gpu.u32 %0,[%1];"
