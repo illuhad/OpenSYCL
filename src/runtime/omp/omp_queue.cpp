@@ -267,96 +267,94 @@ result omp_queue::submit_memcpy(memcpy_operation &op, const dag_node_ptr& node) 
   HIPSYCL_DEBUG_INFO << "omp_queue: Submitting memcpy operation..."
                      << std::endl;
 
-  if (op.source().get_device().is_host() && op.dest().get_device().is_host()) {
-
-    void *base_src = op.source().get_base_ptr();
-    void *base_dest = op.dest().get_base_ptr();
-
-    assert(base_src);
-    assert(base_dest);
-
-    range<3> transferred_range = op.get_num_transferred_elements();
-    range<3> src_allocation_shape = op.source().get_allocation_shape();
-    range<3> dest_allocation_shape = op.dest().get_allocation_shape();
-    id<3> src_offset = op.source().get_access_offset();
-    id<3> dest_offset = op.dest().get_access_offset();
-    std::size_t src_element_size = op.source().get_element_size();
-    std::size_t dest_element_size = op.dest().get_element_size();
-
-    std::size_t total_num_bytes = op.get_num_transferred_bytes();
-
-    bool is_src_contiguous =
-        is_contigous(src_offset, transferred_range, src_allocation_shape);
-    bool is_dest_contiguous =
-        is_contigous(dest_offset, transferred_range, dest_allocation_shape);
-
-    omp_instrumentation_setup instrumentation_setup{op, node};
-
-    _worker([=]() {
-      auto instrumentation_guard = instrumentation_setup.instrument_task();
-
-      auto linear_index = [](id<3> id, range<3> allocation_shape) {
-        return id[2] + allocation_shape[2] * id[1] +
-               allocation_shape[2] * allocation_shape[1] * id[0];
-      };
-
-      if (is_src_contiguous && is_dest_contiguous) {
-        char *current_src = reinterpret_cast<char *>(base_src);
-        char *current_dest = reinterpret_cast<char *>(base_dest);
-
-        current_src +=
-            linear_index(src_offset, src_allocation_shape) * src_element_size;
-        current_dest += linear_index(dest_offset, dest_allocation_shape) *
-                        dest_element_size;
-
-        memcpy(current_dest, current_src, total_num_bytes);
-      } else {
-        id<3> current_src_offset = src_offset;
-        id<3> current_dest_offset = dest_offset;
-        std::size_t row_size = transferred_range[2] * src_element_size;
-
-        for (std::size_t surface = 0; surface < transferred_range[0];
-             ++surface) {
-          for (std::size_t row = 0; row < transferred_range[1]; ++row) {
-
-            char *current_src = reinterpret_cast<char *>(base_src);
-            char *current_dest = reinterpret_cast<char *>(base_dest);
-
-            current_src +=
-                linear_index(current_src_offset, src_allocation_shape) *
-                src_element_size;
-
-            current_dest +=
-                linear_index(current_dest_offset, dest_allocation_shape) *
-                dest_element_size;
-
-            assert(current_src + row_size <=
-                   reinterpret_cast<char *>(base_src) +
-                       src_allocation_shape.size() * src_element_size);
-            assert(current_dest + row_size <=
-                   reinterpret_cast<char *>(base_dest) +
-                       dest_allocation_shape.size() * dest_element_size);
-
-            memcpy(current_dest, current_src, row_size);
-
-            ++current_src_offset[1];
-            ++current_dest_offset[1];
-          }
-          current_src_offset[1] = src_offset[1];
-          current_dest_offset[1] = dest_offset[1];
-
-          ++current_dest_offset[0];
-          ++current_src_offset[0];
-        }
-      }
-    });
-  } else {
+  if (!op.source().get_device().is_host() || !op.dest().get_device().is_host()) {
     return register_error(
         __acpp_here(),
         error_info{"omp_queue: OpenMP CPU backend cannot transfer data between "
                    "host and accelerators.",
                    error_type::feature_not_supported});
   }
+
+  void *base_src = op.source().get_base_ptr();
+  void *base_dest = op.dest().get_base_ptr();
+
+  assert(base_src);
+  assert(base_dest);
+
+  range<3> transferred_range = op.get_num_transferred_elements();
+  range<3> src_allocation_shape = op.source().get_allocation_shape();
+  range<3> dest_allocation_shape = op.dest().get_allocation_shape();
+  id<3> src_offset = op.source().get_access_offset();
+  id<3> dest_offset = op.dest().get_access_offset();
+  std::size_t src_element_size = op.source().get_element_size();
+  std::size_t dest_element_size = op.dest().get_element_size();
+
+  std::size_t total_num_bytes = op.get_num_transferred_bytes();
+
+  bool is_src_contiguous =
+      is_contigous(src_offset, transferred_range, src_allocation_shape);
+  bool is_dest_contiguous =
+      is_contigous(dest_offset, transferred_range, dest_allocation_shape);
+
+  omp_instrumentation_setup instrumentation_setup{op, node};
+
+  _worker([=]() {
+    auto instrumentation_guard = instrumentation_setup.instrument_task();
+
+    auto linear_index = [](id<3> id, range<3> allocation_shape) {
+      return id[2] + allocation_shape[2] * id[1] +
+             allocation_shape[2] * allocation_shape[1] * id[0];
+    };
+
+    if (is_src_contiguous && is_dest_contiguous) {
+      char *current_src = reinterpret_cast<char *>(base_src);
+      char *current_dest = reinterpret_cast<char *>(base_dest);
+
+      current_src +=
+          linear_index(src_offset, src_allocation_shape) * src_element_size;
+      current_dest +=
+          linear_index(dest_offset, dest_allocation_shape) * dest_element_size;
+
+      memcpy(current_dest, current_src, total_num_bytes);
+    } else {
+      id<3> current_src_offset = src_offset;
+      id<3> current_dest_offset = dest_offset;
+      std::size_t row_size = transferred_range[2] * src_element_size;
+
+      for (std::size_t surface = 0; surface < transferred_range[0]; ++surface) {
+        for (std::size_t row = 0; row < transferred_range[1]; ++row) {
+
+          char *current_src = reinterpret_cast<char *>(base_src);
+          char *current_dest = reinterpret_cast<char *>(base_dest);
+
+          current_src +=
+              linear_index(current_src_offset, src_allocation_shape) *
+              src_element_size;
+
+          current_dest +=
+              linear_index(current_dest_offset, dest_allocation_shape) *
+              dest_element_size;
+
+          assert(current_src + row_size <=
+                 reinterpret_cast<char *>(base_src) +
+                     src_allocation_shape.size() * src_element_size);
+          assert(current_dest + row_size <=
+                 reinterpret_cast<char *>(base_dest) +
+                     dest_allocation_shape.size() * dest_element_size);
+
+          memcpy(current_dest, current_src, row_size);
+
+          ++current_src_offset[1];
+          ++current_dest_offset[1];
+        }
+        current_src_offset[1] = src_offset[1];
+        current_dest_offset[1] = dest_offset[1];
+
+        ++current_dest_offset[0];
+        ++current_src_offset[0];
+      }
+    }
+  });
 
   return make_success();
 }
@@ -369,7 +367,7 @@ result omp_queue::submit_kernel(kernel_operation &op, const dag_node_ptr& node) 
 
   const kernel_configuration *config =
       &(op.get_launcher().get_kernel_configuration());
-  
+
   auto backend_id = _backend_id;
   void* params = this;
   rt::dag_node* node_ptr = node.get();
@@ -417,7 +415,7 @@ result omp_queue::submit_sscp_kernel_from_code_object(
       group_size, args,        arg_sizes,   num_args, local_mem_size};
 
   _config = initial_config;
-  
+
   _config.append_base_configuration(
       kernel_base_config_parameter::backend_id, backend_id::omp);
   _config.append_base_configuration(
