@@ -43,7 +43,9 @@ Offloading is implemented for the following STL algorithms:
 |`all_of` | |
 |`none_of` | |
 |`merge` | |
-|`sort` | |
+|`sort` | may not scale optimally for large problems |
+|`inclusive_scan` | |
+|`exclusive_scan` | |
 
 
 For all other execution policies or algorithms, the algorithm will compile and execute correctly, however the regular host implementation of the algorithm provided by the C++ standard library implementation will be invoked and no offloading takes place.

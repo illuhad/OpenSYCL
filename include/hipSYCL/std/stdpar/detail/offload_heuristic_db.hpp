@@ -52,6 +52,8 @@ struct any_of {};
 struct none_of {};
 struct sort {};
 struct merge {};
+struct inclusive_scan {};
+struct exclusive_scan {};
 
 
 struct transform_reduce {};

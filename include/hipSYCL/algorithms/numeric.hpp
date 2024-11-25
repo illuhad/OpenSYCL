@@ -23,7 +23,9 @@
 #include "hipSYCL/sycl/queue.hpp"
 #include "hipSYCL/algorithms/reduction/reduction_descriptor.hpp"
 #include "hipSYCL/algorithms/reduction/reduction_engine.hpp"
+#include "hipSYCL/algorithms/scan/decoupled_lookback_scan.hpp"
 #include "hipSYCL/algorithms/util/memory_streaming.hpp"
+
 
 namespace hipsycl::algorithms {
 
@@ -272,6 +274,94 @@ sycl::event reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
                 typename std::iterator_traits<ForwardIt>::value_type{});
 }
 
+///////////////////////////// scans /////////////////////////////////////
+
+namespace detail {
+
+template <bool IsInclusive, class InputIt, class OutputIt, class BinaryOp,
+          class OptionalInitT>
+sycl::event scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+                 InputIt first, InputIt last, OutputIt d_first, BinaryOp op,
+                 OptionalInitT init,
+                 const std::vector<sycl::event> &deps = {}) {
+
+  auto generator = [=](auto idx, auto effective_group_id, auto effective_global_id,
+                 auto problem_size) {
+    if(effective_global_id >= problem_size)
+      effective_global_id = problem_size - 1;
+
+    InputIt it = first;
+    std::advance(it, effective_global_id);
+    return *it;
+  };
+  auto result_processor = [=](auto idx, auto effective_group_id,
+                       auto effective_global_id, auto problem_size,
+                       auto value) {
+    if (effective_global_id < problem_size) {
+      OutputIt it = d_first;
+      std::advance(it, effective_global_id);
+      *it = value;
+    }
+  };
+
+  std::size_t problem_size = std::distance(first, last);
+  std::size_t group_size = 128;
+
+  using T = std::decay_t<decltype(*first)>;
+  return scanning::decoupled_lookback_scan<IsInclusive, T>(
+      q, scratch_allocations, generator, result_processor, op, problem_size,
+      group_size, init, deps);
 }
+
+} // detail
+
+template <class InputIt, class OutputIt, class BinaryOp>
+sycl::event
+inclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op,
+               const std::vector<sycl::event> &deps = {}) {
+
+  return detail::scan<true>(q, scratch_allocations, first, last, d_first, op,
+                            std::nullopt, deps);
+}
+
+template <class InputIt, class OutputIt, class BinaryOp, class T>
+sycl::event
+inclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op,
+               T init, const std::vector<sycl::event> &deps = {}) {
+  return detail::scan<true>(q, scratch_allocations, first, last, d_first, op,
+                            init, deps);
+}
+
+template <class InputIt, class OutputIt>
+sycl::event inclusive_scan(sycl::queue &q,
+                           util::allocation_group &scratch_allocations,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           const std::vector<sycl::event> &deps = {}) {
+  return inclusive_scan(q, scratch_allocations, first, last, d_first,
+                        std::plus<>{}, deps);
+}
+
+template <class InputIt, class OutputIt, class T, class BinaryOp>
+sycl::event
+exclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, T init,
+               BinaryOp op, const std::vector<sycl::event> &deps = {}) {
+  return detail::scan<false>(q, scratch_allocations, first, last, d_first, op,
+                             init, deps);
+}
+
+template <class InputIt, class OutputIt, class T>
+sycl::event exclusive_scan(sycl::queue &q,
+                           util::allocation_group &scratch_allocations,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           T init, const std::vector<sycl::event> &deps = {}) {
+  return exclusive_scan(q, scratch_allocations, first, last, d_first, init,
+                        std::plus<>{}, deps);
+}
+
+} // algorithms
+
 
 #endif

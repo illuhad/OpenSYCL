@@ -140,6 +140,7 @@ if(WITH_PSTL_TESTS)
     pstl/for_each_n.cpp
     pstl/generate.cpp
     pstl/generate_n.cpp
+    pstl/inclusive_scan.cpp
     pstl/memory.cpp
     pstl/merge.cpp
     pstl/none_of.cpp

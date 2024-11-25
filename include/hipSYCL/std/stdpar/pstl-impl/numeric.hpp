@@ -291,6 +291,181 @@ T reduce(hipsycl::stdpar::par_unseq, ForwardIt first,
 }
 
 
+
+// scans
+
+
+template <class InputIt, class OutputIt, class BinaryOp>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op) {
+
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first, op);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_unseq_host_fallback, first,
+                          last, d_first, op);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par_unseq{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, op);
+  
+}
+
+template <class InputIt, class OutputIt, class BinaryOp, class T>
+HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
+                                                  InputIt first, InputIt last,
+                                                  OutputIt d_first,
+                                                  BinaryOp op, T init) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first, op, init);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_unseq_host_fallback, first,
+                          last, d_first, op, init);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par_unseq{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, op, init);
+}
+
+template <class InputIt, class OutputIt>
+HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
+                                                  InputIt first, InputIt last,
+                                                  OutputIt d_first) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_unseq_host_fallback, first,
+                               last, d_first);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par_unseq{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first);
+}
+
+template <class InputIt, class OutputIt, class T, class BinaryOp>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt
+exclusive_scan(hipsycl::stdpar::par_unseq,
+               InputIt first, InputIt last, OutputIt d_first, T init,
+               BinaryOp op) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
+                                          d_first, init, op);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::exclusive_scan(hipsycl::stdpar::par_unseq_host_fallback, first,
+                          last, d_first, init, op);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::exclusive_scan{},
+          hipsycl::stdpar::par_unseq{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, init, op);
+}
+
+template <class InputIt, class OutputIt, class T>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt exclusive_scan(hipsycl::stdpar::par_unseq,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           T init) {
+
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
+                                          d_first, init);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::exclusive_scan(hipsycl::stdpar::par_unseq_host_fallback, first,
+                          last, d_first, init);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::exclusive_scan{},
+          hipsycl::stdpar::par_unseq{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, init);
+}
+
+
 //////////////////// par policy /////////////////////////////////////
 
 
@@ -559,6 +734,178 @@ T reduce(hipsycl::stdpar::par, ForwardIt first,
       HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), init, binary_op);
 }
 
+// scans
+
+
+template <class InputIt, class OutputIt, class BinaryOp>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt inclusive_scan(hipsycl::stdpar::par,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op) {
+
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first, op);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_host_fallback, first,
+                          last, d_first, op);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, op);
+  
+}
+
+template <class InputIt, class OutputIt, class BinaryOp, class T>
+HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
+                                                  InputIt first, InputIt last,
+                                                  OutputIt d_first,
+                                                  BinaryOp op, T init) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first, op, init);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_host_fallback, first,
+                          last, d_first, op, init);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, op, init);
+}
+
+template <class InputIt, class OutputIt>
+HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
+                                                  InputIt first, InputIt last,
+                                                  OutputIt d_first) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
+                                          d_first);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::inclusive_scan(hipsycl::stdpar::par_host_fallback, first, last,
+                               d_first);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::inclusive_scan{},
+          hipsycl::stdpar::par{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first);
+}
+
+template <class InputIt, class OutputIt, class T, class BinaryOp>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt
+exclusive_scan(hipsycl::stdpar::par,
+               InputIt first, InputIt last, OutputIt d_first, T init,
+               BinaryOp op) {
+  
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
+                                          d_first, init, op);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::exclusive_scan(hipsycl::stdpar::par_host_fallback, first,
+                          last, d_first, init, op);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::exclusive_scan{},
+          hipsycl::stdpar::par{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, init, op);
+}
+
+template <class InputIt, class OutputIt, class T>
+HIPSYCL_STDPAR_ENTRYPOINT
+OutputIt exclusive_scan(hipsycl::stdpar::par,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           T init) {
+
+  auto offloader = [&](auto& queue){
+    OutputIt last = d_first;
+    auto problem_size = std::distance(first, last);
+    std::advance(last, problem_size);
+    if(problem_size > 0) {
+      auto scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+      hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
+                                          d_first, init);
+    }
+    return last;
+  };
+
+  auto fallback = [&]() {
+    return std::exclusive_scan(hipsycl::stdpar::par_host_fallback, first,
+                          last, d_first, init);
+  };
+
+  HIPSYCL_STDPAR_OFFLOAD(
+      hipsycl::stdpar::algorithm(
+          hipsycl::stdpar::algorithm_category::exclusive_scan{},
+          hipsycl::stdpar::par{}),
+      std::distance(first, last), OutputIt, offloader, fallback, first,
+      HIPSYCL_STDPAR_NO_PTR_VALIDATION(last), d_first, init);
+}
 
 
 }
