@@ -160,5 +160,5 @@ jobs:
     - name: build tests
       run: |
         mkdir ${GITHUB_WORKSPACE}/build/tests-nvcxx
-        cmake -DACPP_TARGETS="cuda-nvcxx" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-DHIPSYCL_NO_FIBERS" -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests
+        cmake -DACPP_TARGETS="cuda-nvcxx:cc70" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-DHIPSYCL_NO_FIBERS" -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests
         make -j2
