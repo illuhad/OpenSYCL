@@ -45,6 +45,47 @@ struct scratch_data {
   status* group_status;
 };
 
+template <class T, class BinaryOp>
+T kogge_stone_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
+                   T *local_mem) {
+  const int lid = idx.get_local_linear_id();
+  const int local_size = idx.get_local_range().size();
+  local_mem[lid] = my_element;
+
+  for (unsigned stride = 1; stride < local_size; stride <<= 1) {
+    sycl::group_barrier(idx.get_group());
+    T current = my_element;
+    if (lid >= stride) {
+        current = op(local_mem[lid - stride], local_mem[lid]);
+    }
+    sycl::group_barrier(idx.get_group());
+    
+    if (lid >= stride) {
+      local_mem[lid] = current;
+    }
+  }
+
+  return local_mem[lid];
+}
+
+template <class T, class BinaryOp>
+T sequential_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
+                   T *local_mem) {
+  int lid = idx.get_local_linear_id();
+  local_mem[lid] = my_element;
+  sycl::group_barrier(idx.get_group());
+
+  if(lid == 0) {
+    T current = local_mem[0];
+    for(int i = 1; i < idx.get_local_range().size(); ++i) {
+      current = op(current, local_mem[i]);
+      local_mem[i] = current;
+    }
+  }
+  sycl::group_barrier(idx.get_group());
+  return local_mem[lid];
+}
+
 template<class T, class BinaryOp>
 constexpr bool can_use_group_algorithms() {
   // TODO
@@ -57,20 +98,7 @@ T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
   if constexpr(can_use_group_algorithms<T, BinaryOp>()) {
     // TODO
   } else {
-    int lid = idx.get_local_linear_id();
-    local_mem[lid] = my_element;
-    sycl::group_barrier(idx.get_group());
-
-    // TODO Improve this
-    if(lid == 0) {
-      T current = local_mem[0];
-      for(int i = 1; i < idx.get_local_range().size(); ++i) {
-        current = op(current, local_mem[i]);
-        local_mem[i] = current;
-      }
-    }
-    sycl::group_barrier(idx.get_group());
-    return local_mem[lid];
+    return kogge_stone_scan<T, BinaryOp>(idx, my_element, op, local_mem);
   }
 }
 
