@@ -49,21 +49,31 @@ inline constexpr int builtin_memory_order(memory_order o) noexcept {
 __attribute__((always_inline)) 
 HIPSYCL_HIPLIKE_BUILTIN
 void __acpp_cuda_atomic_store_device_rel_i32(int32_t *ptr, int32_t x) {
+#if __CUDA_ARCH__ < 700
+  *ptr = x;
+  __threadfence();
+#else
   asm volatile("st.release.gpu.s32 [%0], %1;"
               :
               :"l"(ptr), "r"(x)
               : "memory");
+#endif
 }
 
 __attribute__((always_inline))
 HIPSYCL_HIPLIKE_BUILTIN
 int32_t __acpp_cuda_atomic_load_device_acq_i32(int32_t *ptr) {
+#if __CUDA_ARCH__ < 700
+  __threadfence();
+  return *ptr;
+#else
   int32_t result;
   asm volatile("ld.acquire.gpu.u32 %0,[%1];"
                 : "=r"(result)
                 : "l"(ptr)
                 : "memory");
   return result;  
+#endif
 }
 
 #endif
