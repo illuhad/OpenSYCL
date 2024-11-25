@@ -144,17 +144,11 @@ if(WITH_SSCP_COMPILER)
       GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-LLVM-Translator
       GIT_TAG origin/${LLVMSPIRV_BRANCH}
       GIT_SHALLOW ON
+      PATCH_COMMAND git apply --ignore-whitespace ${CMAKE_CURRENT_SOURCE_DIR}/spirv/llvm-spirv.patch;
+      UPDATE_DISCONNECTED ON
     )
-
-    FetchContent_GetProperties(LLVMSpirvTranslator)
-    if(NOT LLVMSpirvTranslator_POPULATED)
-      FetchContent_Populate(LLVMSpirvTranslator)
-      execute_process(COMMAND patch -N -p0 -c --fuzz=4 --ignore-whitespace -i llvm-spirv.patch ${llvmspirvtranslator_SOURCE_DIR}/lib/SPIRV/SPIRVInternal.h ${CMAKE_CURRENT_SOURCE_DIR}/spirv/llvm-spirv.patch)
-      execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DLLVM_SPIRV_BUILD_EXTERNAL=ON -DLLVM_DIR=${LLVM_DIR} -DCMAKE_INSTALL_PREFIX=${LLVMSPIRV_INSTALLDIR} -DCMAKE_BUILD_TYPE=Release -S ${llvmspirvtranslator_SOURCE_DIR} -B ${llvmspirvtranslator_BINARY_DIR})
-    endif()
-    
-    add_custom_target(llvm-spirv-translator ALL COMMAND ${CMAKE_COMMAND} --build ${llvmspirvtranslator_BINARY_DIR} --config Release)
-    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} --install ${llvmspirvtranslator_BINARY_DIR})")
+    set(LLVM_SPIRV_BUILD_EXTERNAL ON) # used by SPIRV-LLVM-Translator CMakeLists.txt
+    FetchContent_MakeAvailable(LLVMSpirvTranslator)
 
     target_compile_definitions(llvm-to-spirv PRIVATE
       -DHIPSYCL_RELATIVE_LLVMSPIRV_PATH="${LLVMSPIRV_RELATIVE_PATH}")

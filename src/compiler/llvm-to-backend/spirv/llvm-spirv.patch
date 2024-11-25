@@ -1,23 +1,18 @@
-*** SPIRVInternal.h	2022-11-10 17:33:41.028934130 +0100
---- SPIRVInternal.changed.h	2022-11-10 17:34:34.144344275 +0100
-***************
-*** 180,188 ****
-  
-  enum SPIRAddressSpace {
-!   SPIRAS_Private,
-    SPIRAS_Global,
-    SPIRAS_Constant,
-    SPIRAS_Local,
-!   SPIRAS_Generic,
-    SPIRAS_GlobalDevice,
-    SPIRAS_GlobalHost,
---- 180,188 ----
-  
-  enum SPIRAddressSpace {
-!   SPIRAS_Generic,
-    SPIRAS_Global,
-    SPIRAS_Constant,
-    SPIRAS_Local,
-!   SPIRAS_Private,
-    SPIRAS_GlobalDevice,
-    SPIRAS_GlobalHost,
+diff --git a/lib/SPIRV/SPIRVInternal.h b/lib/SPIRV/SPIRVInternal.h
+index 7fa5323..078e033 100644
+--- a/lib/SPIRV/SPIRVInternal.h
++++ b/lib/SPIRV/SPIRVInternal.h
+@@ -180,11 +180,11 @@ typedef SPIRVMap<Op, Op, IntBoolOpMapId> IntBoolOpMap;
+   "-v512:512:512-v1024:1024:1024"
+ 
+ enum SPIRAddressSpace {
+-  SPIRAS_Private,
++  SPIRAS_Generic,
+   SPIRAS_Global,
+   SPIRAS_Constant,
+   SPIRAS_Local,
+-  SPIRAS_Generic,
++  SPIRAS_Private,
+   SPIRAS_GlobalDevice,
+   SPIRAS_GlobalHost,
+   SPIRAS_Input,
