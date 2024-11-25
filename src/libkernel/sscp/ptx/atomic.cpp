@@ -463,6 +463,14 @@ HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i32(
                    : "memory");
       return;
     }
+  } else if(scope == __acpp_sscp_memory_scope::device) {
+    if(order == __acpp_sscp_memory_order::release) {
+      asm volatile("st.release.gpu.s32 [%0], %1;"
+                   :
+                   :"l"(ptr), "r"(x)
+                   : "memory");
+      return;
+    }
   }
 
   *ptr = x;
@@ -503,6 +511,15 @@ HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_atomic_load_i32(
                    : "memory");
       return result;
     }
+  } else if(scope == __acpp_sscp_memory_scope::device) {
+    if(order == __acpp_sscp_memory_order::acquire) {
+      __acpp_int32 result;
+      asm volatile("ld.acquire.gpu.u32 %0,[%1];"
+                   : "=r"(result)
+                   : "l"(ptr)
+                   : "memory");
+      return result;
+    } 
   }
 
   return *ptr;
