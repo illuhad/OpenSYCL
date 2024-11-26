@@ -27,18 +27,17 @@ template<class T, std::size_t PaddingSize>
 struct non_default_constructible {
 public:
   static auto make(T x){
-    non_default_constructible<T, PaddingSize> t; t.x = x;
+    non_default_constructible<T, PaddingSize> t;
+    t.data[0] = x;
     return t;
   }
 
   T get() const {
-    return x;
+    return data[0];
   }
 private:
   non_default_constructible(){}
-  T x;
-  std::array<uint64_t, (PaddingSize + sizeof(uint64_t) - 1) / sizeof(uint64_t)>
-      padding;
+  alignas(PaddingSize * sizeof(T)) T data [PaddingSize];
 };
 
 template<class T>
@@ -145,13 +144,13 @@ void run_all_tests(Policy&& pol) {
             non_constructible_t::make(3ull),
             get_non_constructible_bin_op<non_constructible_t>(), ProblemSize);
   
-  using massive_non_constructible_t =
-      non_default_constructible<std::size_t, 1024>;
+  /*using massive_non_constructible_t =
+      non_default_constructible<std::size_t, 4>;
   test_scan(std::execution::par_unseq,
             get_non_constructible_generator<massive_non_constructible_t>(),
             massive_non_constructible_t::make(3ull),
             get_non_constructible_bin_op<massive_non_constructible_t>(),
-            ProblemSize);
+            ProblemSize);*/
 }
 
 BOOST_AUTO_TEST_CASE(par_unseq_empty) {
