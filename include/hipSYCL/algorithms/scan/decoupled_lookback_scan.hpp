@@ -235,8 +235,7 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
   // Set group aggregate which we now know after scan. The first group
   // Can also set its prefix and is done.
   if(local_id == local_size - 1) {
-    T group_aggregate =
-        IsInclusive ? local_scan_result : op(local_scan_result, my_element);
+    T group_aggregate = local_scan_result;
     
     if(effective_group_id == 0) {
       scratch.group_aggregate[effective_group_id] = group_aggregate;
