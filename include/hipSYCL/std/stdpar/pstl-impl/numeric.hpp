@@ -301,9 +301,9 @@ OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
                InputIt first, InputIt last, OutputIt d_first, BinaryOp op) {
 
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -312,7 +312,7 @@ OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first, op);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -336,9 +336,9 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
                                                   BinaryOp op, T init) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -347,7 +347,7 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first, op, init);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -369,9 +369,9 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
                                                   OutputIt d_first) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -380,7 +380,7 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par_unseq,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -404,9 +404,9 @@ exclusive_scan(hipsycl::stdpar::par_unseq,
                BinaryOp op) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -415,7 +415,7 @@ exclusive_scan(hipsycl::stdpar::par_unseq,
       hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
                                           d_first, init, op);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -438,9 +438,9 @@ OutputIt exclusive_scan(hipsycl::stdpar::par_unseq,
                            T init) {
 
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -449,7 +449,7 @@ OutputIt exclusive_scan(hipsycl::stdpar::par_unseq,
       hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
                                           d_first, init);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -743,9 +743,9 @@ OutputIt inclusive_scan(hipsycl::stdpar::par,
                InputIt first, InputIt last, OutputIt d_first, BinaryOp op) {
 
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -754,7 +754,7 @@ OutputIt inclusive_scan(hipsycl::stdpar::par,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first, op);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -778,9 +778,9 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
                                                   BinaryOp op, T init) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -789,7 +789,7 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first, op, init);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -811,9 +811,9 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
                                                   OutputIt d_first) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -822,7 +822,7 @@ HIPSYCL_STDPAR_ENTRYPOINT OutputIt inclusive_scan(hipsycl::stdpar::par,
       hipsycl::algorithms::inclusive_scan(queue, scratch_group, first, last,
                                           d_first);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -846,9 +846,9 @@ exclusive_scan(hipsycl::stdpar::par,
                BinaryOp op) {
   
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -857,7 +857,7 @@ exclusive_scan(hipsycl::stdpar::par,
       hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
                                           d_first, init, op);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {
@@ -880,9 +880,9 @@ OutputIt exclusive_scan(hipsycl::stdpar::par,
                            T init) {
 
   auto offloader = [&](auto& queue){
-    OutputIt last = d_first;
+    OutputIt result = d_first;
     auto problem_size = std::distance(first, last);
-    std::advance(last, problem_size);
+    std::advance(result, problem_size);
     if(problem_size > 0) {
       auto scratch_group =
         hipsycl::stdpar::detail::stdpar_tls_runtime::get()
@@ -891,7 +891,7 @@ OutputIt exclusive_scan(hipsycl::stdpar::par,
       hipsycl::algorithms::exclusive_scan(queue, scratch_group, first, last,
                                           d_first, init);
     }
-    return last;
+    return result;
   };
 
   auto fallback = [&]() {

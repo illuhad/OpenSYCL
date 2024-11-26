@@ -72,7 +72,7 @@ bool operator!=(const non_default_constructible<T, PaddingSize> &a,
 template<class Policy, class Generator, class BinOp, class T>
 void test_scan(Policy&& pol, Generator&& gen, T init, BinOp op, std::size_t size) {
   std::vector<T> data;
-  for(std::size_t i = 0; i < data.size(); ++i)
+  for(std::size_t i = 0; i < size; ++i)
     data.push_back(gen(i));
 
   std::vector<T> reference0;

@@ -56,7 +56,7 @@ T kogge_stone_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
     sycl::group_barrier(idx.get_group());
     T current = my_element;
     if (lid >= stride) {
-        current = op(local_mem[lid - stride], local_mem[lid]);
+      current = op(local_mem[lid - stride], local_mem[lid]);
     }
     sycl::group_barrier(idx.get_group());
     
@@ -65,7 +65,9 @@ T kogge_stone_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
     }
   }
 
-  return local_mem[lid];
+  auto result = local_mem[lid];
+  sycl::group_barrier(idx.get_group());
+  return result;
 }
 
 template <class T, class BinaryOp>
@@ -83,7 +85,9 @@ T sequential_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
     }
   }
   sycl::group_barrier(idx.get_group());
-  return local_mem[lid];
+  auto result = local_mem[lid];
+  sycl::group_barrier(idx.get_group());
+  return result;
 }
 
 template<class T, class BinaryOp>
@@ -99,6 +103,7 @@ T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
     // TODO
   } else {
     return kogge_stone_scan<T, BinaryOp>(idx, my_element, op, local_mem);
+    //return sequential_scan<T, BinaryOp>(idx, my_element, op, local_mem);
   }
 }
 
@@ -111,7 +116,9 @@ T collective_broadcast(sycl::nd_item<1> idx, T x, int local_id, T* local_mem) {
       *local_mem = x;
     }
     sycl::group_barrier(idx.get_group());
-    return *local_mem;
+    auto result = *local_mem;
+    sycl::group_barrier(idx.get_group());
+    return result;
   }
 }
 
@@ -133,7 +140,7 @@ T exclusive_prefix_look_back(const T &dummy_init, int effective_group_id,
     }
   };
 
-  for(int lookback_group = effective_group_id - 1; lookback_group > 0; --lookback_group) {
+  for(int lookback_group = effective_group_id - 1; lookback_group >= 0; --lookback_group) {
     uint32_t& status_ptr = reinterpret_cast<uint32_t&>(status[lookback_group]);
     sycl::atomic_ref<uint32_t, sycl::memory_order::acq_rel,
                   sycl::memory_scope::device,
@@ -219,19 +226,21 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
   T local_scan_result =
           collective_inclusive_group_scan(idx, my_element, op, local_memory);
 
-  if(local_id == local_size - 1) {
-    T group_aggregate =
-        IsInclusive ? local_scan_result : op(local_scan_result, my_element);
-
-    uint32_t *status_ptr =
+  uint32_t *status_ptr =
         reinterpret_cast<uint32_t *>(&scratch.group_status[effective_group_id]);
     sycl::atomic_ref<uint32_t, sycl::memory_order::acq_rel,
                   sycl::memory_scope::device,
                   sycl::access::address_space::global_space> status_ref{*status_ptr};
+
+  // Set group aggregate which we now know after scan. The first group
+  // Can also set its prefix and is done.
+  if(local_id == local_size - 1) {
+    T group_aggregate =
+        IsInclusive ? local_scan_result : op(local_scan_result, my_element);
     
     if(effective_group_id == 0) {
       scratch.group_aggregate[effective_group_id] = group_aggregate;
-      scratch.group_aggregate[effective_group_id] = group_aggregate;
+      scratch.inclusive_prefix[effective_group_id] = group_aggregate;
       status_ref.store(static_cast<uint32_t>(status::prefix_available));
     } else {
       scratch.group_aggregate[effective_group_id] = group_aggregate;
@@ -239,6 +248,7 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
     }
   }
 
+  // All groups except group 0 need to perform lookback to find their prefix
   if(effective_group_id != 0) {
     // my_element is a dummy value here; avoid relying on default constructor
     // in case T has none
@@ -249,8 +259,16 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
                           scratch.inclusive_prefix, op);
     }
     exclusive_prefix = collective_broadcast<T, BinaryOp>(
-        idx, exclusive_prefix, local_id, local_memory);
+        idx, exclusive_prefix, 0, local_memory);
     local_scan_result = op(exclusive_prefix, local_scan_result);
+
+    // All groups except first and last one need to update their prefix
+    if(effective_group_id != num_groups - 1) {
+      if(local_id == local_size - 1){
+        scratch.inclusive_prefix[effective_group_id] = local_scan_result;
+        status_ref.store(static_cast<uint32_t>(status::prefix_available));
+      }
+    }
   }
 
   processor(idx, effective_group_id, global_id, problem_size, local_scan_result);
@@ -326,7 +344,7 @@ decoupled_lookback_scan(sycl::queue &q, util::allocation_group &scratch_alloc,
 
   std::size_t num_groups = (problem_size + group_size - 1) / group_size;
   detail::scratch_data<T> scratch{scratch_alloc, num_groups};
-  uint32_t* group_counter = scratch_alloc.obtain<unsigned>(1);
+  uint32_t* group_counter = scratch_alloc.obtain<uint32_t>(1);
 
   auto initialization_evt = q.parallel_for(num_groups, [=](sycl::id<1> idx){
     scratch.group_status[idx] = detail::status::invalid;

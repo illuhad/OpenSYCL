@@ -72,7 +72,7 @@ bool operator!=(const non_default_constructible<T, PaddingSize> &a,
 template<class Policy, class Generator, class BinOp, class T>
 void test_scan(Policy&& pol, Generator&& gen, T init, BinOp op, std::size_t size) {
   std::vector<T> data;
-  for(std::size_t i = 0; i < data.size(); ++i)
+  for(std::size_t i = 0; i < size; ++i)
     data.push_back(gen(i));
 
   std::vector<T> reference0;
@@ -85,7 +85,7 @@ void test_scan(Policy&& pol, Generator&& gen, T init, BinOp op, std::size_t size
   std::inclusive_scan(data.begin(), data.end(), reference1.begin(), op);
 
   std::vector<T> reference2 = data;
-  std::inclusive_scan(data.begin(), data.end(), reference1.begin(), op, init);
+  std::inclusive_scan(data.begin(), data.end(), reference2.begin(), op, init);
 
   std::vector<T> device_result0 = data;
   if constexpr(std::is_same_v<BinOp, std::plus<>>) {
@@ -98,7 +98,7 @@ void test_scan(Policy&& pol, Generator&& gen, T init, BinOp op, std::size_t size
     BOOST_CHECK(std::inclusive_scan(pol, data.begin(), data.end(),
                                     device_result1.begin(), op) ==
                 device_result1.end());
-  
+
   std::vector<T> device_result2 = data;
     BOOST_CHECK(std::inclusive_scan(pol, data.begin(), data.end(),
                                     device_result2.begin(), op, init) ==
