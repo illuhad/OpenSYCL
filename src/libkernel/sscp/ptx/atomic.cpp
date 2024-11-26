@@ -13,6 +13,8 @@
 #include "hipSYCL/sycl/libkernel/sscp/builtins/ptx/libdevice.hpp"
 
 
+extern "C" int __acpp_sscp_jit_reflect_target_arch();
+
 // Atomic definitions adapted from __clang_cuda_device_functions.h
 
 double __dAtomicAdd(double *__p, double __v) {
@@ -455,24 +457,25 @@ HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i16(
 HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i32(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int32 *ptr, __acpp_int32 x) {
-  if(scope == __acpp_sscp_memory_scope::system) {
-    if(order == __acpp_sscp_memory_order::release) {
-      asm volatile("st.release.sys.s32 [%0], %1;"
-                   :
-                   :"l"(ptr), "r"(x)
-                   : "memory");
-      return;
-    }
-  } else if(scope == __acpp_sscp_memory_scope::device) {
-    if(order == __acpp_sscp_memory_order::release) {
-      asm volatile("st.release.gpu.s32 [%0], %1;"
-                   :
-                   :"l"(ptr), "r"(x)
-                   : "memory");
-      return;
+  if(__acpp_sscp_jit_reflect_target_arch() >= 70) {
+    if(scope == __acpp_sscp_memory_scope::system) {
+      if(order == __acpp_sscp_memory_order::release) {
+        asm volatile("st.release.sys.s32 [%0], %1;"
+                    :
+                    :"l"(ptr), "r"(x)
+                    : "memory");
+        return;
+      }
+    } else if(scope == __acpp_sscp_memory_scope::device) {
+      if(order == __acpp_sscp_memory_order::release) {
+        asm volatile("st.release.gpu.s32 [%0], %1;"
+                    :
+                    :"l"(ptr), "r"(x)
+                    : "memory");
+        return;
+      }
     }
   }
-
   *ptr = x;
   mem_fence(scope);
 }
@@ -490,44 +493,50 @@ HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i64(
 HIPSYCL_SSCP_BUILTIN __acpp_int8 __acpp_sscp_atomic_load_i8(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int8 *ptr) {
+  mem_fence(scope);
   return *ptr;
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int16 __acpp_sscp_atomic_load_i16(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int16 *ptr) {
+  mem_fence(scope);
   return *ptr;
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_atomic_load_i32(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int32 *ptr) {
-  if(scope == __acpp_sscp_memory_scope::system) {
-    if(order == __acpp_sscp_memory_order::acquire) {
-      __acpp_int32 result;
-      asm volatile("ld.acquire.sys.u32 %0,[%1];"
-                   : "=r"(result)
-                   : "l"(ptr)
-                   : "memory");
-      return result;
-    }
-  } else if(scope == __acpp_sscp_memory_scope::device) {
-    if(order == __acpp_sscp_memory_order::acquire) {
-      __acpp_int32 result;
-      asm volatile("ld.acquire.gpu.u32 %0,[%1];"
-                   : "=r"(result)
-                   : "l"(ptr)
-                   : "memory");
-      return result;
-    } 
-  }
 
+  if(__acpp_sscp_jit_reflect_target_arch() >= 70) {
+    if(scope == __acpp_sscp_memory_scope::system) {
+      if(order == __acpp_sscp_memory_order::acquire) {
+        __acpp_int32 result;
+        asm volatile("ld.acquire.sys.u32 %0,[%1];"
+                    : "=r"(result)
+                    : "l"(ptr)
+                    : "memory");
+        return result;
+      }
+    } else if(scope == __acpp_sscp_memory_scope::device) {
+      if(order == __acpp_sscp_memory_order::acquire) {
+        __acpp_int32 result;
+        asm volatile("ld.acquire.gpu.u32 %0,[%1];"
+                    : "=r"(result)
+                    : "l"(ptr)
+                    : "memory");
+        return result;
+      } 
+    }
+  }
+  mem_fence(scope);
   return *ptr;
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int64 __acpp_sscp_atomic_load_i64(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int64 *ptr) {
+  mem_fence(scope);
   return *ptr;
 }
 
