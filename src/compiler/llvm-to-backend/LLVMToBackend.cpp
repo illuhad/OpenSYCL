@@ -306,6 +306,9 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
       return false;
     }
 
+    // Run again to resolve reflection inside builtins
+    S2RP.run(M, MAM);
+
     // Inline again to handle builtin definitions pulled in by backend flavors
     InliningPass.run(M, MAM);
 
