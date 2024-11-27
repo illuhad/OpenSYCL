@@ -134,6 +134,33 @@ T collective_broadcast(sycl::nd_item<1> idx, T x, int local_id, T* local_mem) {
   }
 }
 
+template <class T, class BinaryOp, class Generator, class Processor>
+T joint_inclusive_group_scan(sycl::nd_item<1> idx, int num_scan_groups,
+                             BinaryOp op, T *local_mem, Generator gen,
+                             Processor result_processor) {
+  const int lid = idx.get_local_linear_id();
+  const int group_size = idx.get_local_range().size();
+  T current_exclusive_prefix;
+  for(int invocation = 0, invocation < num_scan_groups, ++invocation) {
+    int current_id = invocation * group_size + lid;
+    T my_element = gen(idx, invocation, current_id);
+    T local_scan_result =
+        collective_inclusive_group_scan(idx, my_element, op, local_mem);
+    
+    if(invocation != 0)
+      local_scan_result = op(exclusive_prefix, local_scan_result);
+
+    // need lookback here
+    result_processor(idx, invocation, current_id, local_scan_result);
+    
+    current_exclusive_prefix = collective_broadcast<T, BinaryOp>(
+        idx, local_scan_result, group_size - 1, local_mem);
+  }
+  // has local prefix here
+
+  return current_exclusive_prefix;
+}
+
 template <class T, class BinaryOp>
 T exclusive_prefix_look_back(const T &dummy_init, int effective_group_id,
                              detail::status *status, T *group_aggregate,
@@ -237,6 +264,10 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
   // at global_id-1 instead of global_id.
   T local_scan_result =
           collective_inclusive_group_scan(idx, my_element, op, local_memory);
+  auto generator = [=](auto idx, int group_invocation, int current_id) {
+
+  };
+
 
   uint32_t *status_ptr =
         reinterpret_cast<uint32_t *>(&scratch.group_status[effective_group_id]);
