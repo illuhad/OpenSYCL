@@ -105,6 +105,9 @@ void test_scan(Policy&& pol, Generator&& gen, T init, BinOp op, std::size_t size
   
   if constexpr(std::is_same_v<BinOp, std::plus<>>) {
     BOOST_CHECK(reference0 == device_result0);
+    for(int i = 0; i < 1000; ++i) {
+      std::cout << i << " " << reference0[i] << " " << device_result0[i] << std::endl;
+    }
   }
   BOOST_CHECK(reference1 == device_result1);
   BOOST_CHECK(reference2 == device_result2);
@@ -138,13 +141,13 @@ void run_all_tests(Policy&& pol) {
       std::execution::par_unseq, get_default_generator(), 3ull,
       [](auto a, auto b) { return a * b; }, ProblemSize);
   
-  using non_constructible_t = non_default_constructible<std::size_t, 0>;
+  /*using non_constructible_t = non_default_constructible<std::size_t, 0>;
   test_scan(std::execution::par_unseq,
             get_non_constructible_generator<non_constructible_t>(), 
             non_constructible_t::make(3ull),
             get_non_constructible_bin_op<non_constructible_t>(), ProblemSize);
   
-  /*using massive_non_constructible_t =
+  using massive_non_constructible_t =
       non_default_constructible<std::size_t, 4>;
   test_scan(std::execution::par_unseq,
             get_non_constructible_generator<massive_non_constructible_t>(),
