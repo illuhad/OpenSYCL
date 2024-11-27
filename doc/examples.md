@@ -3,41 +3,42 @@ The following code adds two vectors:
 #include <cassert>
 #include <iostream>
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 using data_type = float;
 
-std::vector<data_type> add(cl::sycl::queue& q,
+std::vector<data_type> add(sycl::queue& q,
                            const std::vector<data_type>& a,
-                           const std::vector<data_type>& b)
-{
+                           const std::vector<data_type>& b) {
   std::vector<data_type> c(a.size());
 
   assert(a.size() == b.size());
-  cl::sycl::range<1> work_items{a.size()};
 
-  {
-    cl::sycl::buffer<data_type> buff_a(a.data(), a.size());
-    cl::sycl::buffer<data_type> buff_b(b.data(), b.size());
-    cl::sycl::buffer<data_type> buff_c(c.data(), c.size());
+  data_type* dev_a = sycl::malloc_device<data_type>(a.size(), q);
+  data_type* dev_b = sycl::malloc_device<data_type>(a.size(), q);
+  data_type* dev_c = sycl::malloc_device<data_type>(a.size(), q);
 
-    q.submit([&](cl::sycl::handler& cgh){
-      auto access_a = buff_a.get_access<cl::sycl::access::mode::read>(cgh);
-      auto access_b = buff_b.get_access<cl::sycl::access::mode::read>(cgh);
-      auto access_c = buff_c.get_access<cl::sycl::access::mode::write>(cgh);
+  q.memcpy(dev_a, a.data(), sizeof(T) * a.size());
+  q.memcpy(dev_b, b.data(), sizeof(T) * b.size());
+  q.memcpy(dev_c, c.data(), sizeof(T) * c.size());
 
-      cgh.parallel_for<class vector_add>(work_items,
-                                         [=] (cl::sycl::id<1> tid) {
-        access_c[tid] = access_a[tid] + access_b[tid];
-      });
-    });
-  }
+  q.parallel_for(a.size(), [=](sycl::id<1> idx){
+    dev_c[idx] = dev_a[idx] + dev_b[idx];
+  });
+
+  q.memcpy(c.data(), dev_c, sizeof(T) * c.size());
+  q.wait();
+
+  sycl::free(dev_a, q);
+  sycl::free(dev_b, q);
+  sycl::free(dev_c, q);
+
   return c;
 }
 
 int main()
 {
-  cl::sycl::queue q;
+  sycl::queue q{sycl::property::queue::in_order{}};
   std::vector<data_type> a = {1.f, 2.f, 3.f, 4.f, 5.f};
   std::vector<data_type> b = {-1.f, 2.f, -3.f, 4.f, -5.f};
   auto result = add(q, a, b);
