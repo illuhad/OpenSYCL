@@ -1942,6 +1942,8 @@ def print_usage(config):
   print("--help\n  Print this help message\n")
   print("\nAny other options will be forwarded to the compiler.")
   print("\nNote: Command line arguments take precedence over environment variables.")
+  print("\n\nFor guidance on how to get good performance with AdaptiveCpp, please see")
+  print("\nhttps://github.com/AdaptiveCpp/AdaptiveCpp/blob/develop/doc/performance.md")
 
 if __name__ == '__main__':
   if sys.version_info[0] < 3:
