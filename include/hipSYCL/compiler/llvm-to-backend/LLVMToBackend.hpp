@@ -216,6 +216,8 @@ private:
   void runKernelDeadArgumentElimination(llvm::Module &M, llvm::Function *F, PassHandler &PH,
                                         std::vector<int>& RetainedIndicesOut);
 
+  std::string getCompilationIdentifier() const;
+
   int S2IRConstantBackendId;
   
   std::vector<std::string> OutliningEntrypoints;

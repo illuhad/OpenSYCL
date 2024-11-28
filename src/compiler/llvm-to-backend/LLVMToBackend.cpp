@@ -41,14 +41,96 @@
 #include <llvm/Linker/Linker.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <string>
+#include <optional>
+#include <cstdlib>
+#include <sstream>
+#include <unordered_set>
 
 namespace hipsycl {
 namespace compiler {
 
 namespace {
+
+template<class T>
+std::optional<T> getEnvironmentVariable(const std::string& Name) {
+  std::string EnvName = Name;
+  std::transform(EnvName.begin(), EnvName.end(), EnvName.begin(), ::toupper);
+
+  if(const char* EnvVal = std::getenv(("ACPP_S2_"+EnvName).c_str())) {
+    T val;
+    std::stringstream sstr{std::string{EnvVal}};
+    sstr >> val;
+    if (!sstr.fail() && !sstr.bad()) {
+      return val;
+    }
+  }
+  return {};
+}
+
+template<class T>
+T getEnvironmentVariableOrDefault(const std::string& Name,
+                                      const T& Default) {
+  std::optional<T> v = getEnvironmentVariable<T>(Name);
+  if(v.has_value()) {
+    return v.value();
+  }
+  return Default;
+}
+
+void printModuleToFile(llvm::Module& M, const std::string& File,
+                      const std::string& Header){
+
+  // Desired behavior is to truncate files for each application run,
+  // but append content in the dump file within one application run.
+  static std::unordered_set<std::string> UsedFiles;
+  auto OpenFlag = llvm::sys::fs::OpenFlags::OF_Append;
+  if(UsedFiles.find(File) == UsedFiles.end()) {
+    OpenFlag = llvm::sys::fs::OpenFlags::OF_None;
+    UsedFiles.insert(File);
+  }
+
+  std::error_code EC;
+  llvm::raw_fd_ostream Out{File, EC, OpenFlag};
+  Out << ";---------------- Begin AdaptiveCpp IR dump --------------\n";
+  Out << Header;
+  M.print(Out, nullptr);
+  Out << ";----------------- End AdaptiveCpp IR dump ---------------\n";
+}
+
+void enableModuleStateDumping(llvm::Module &M, const std::string &PipelineStage,
+                              const std::string &Kernels) {
+  std::string Filter =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_FILTER", "");
+
+  std::string FallbackFileName = M.getSourceFileName()+".ll";
+  std::string FileName =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_" + PipelineStage, "");
+
+  if(FileName == "1")
+    FileName = FallbackFileName;
+  
+  std::string Header =
+      "; AdaptiveCpp SSCP S2 IR dump; Compiling kernels: " + Kernels + ", stage: " + PipelineStage + "\n";
+
+  if(FileName.length() != 0) {
+    if(Kernels == Filter || Filter.empty())
+      printModuleToFile(M, FileName, Header);
+  }
+
+  std::string AllFileName =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_ALL", "");
+  if(AllFileName == "1")
+    AllFileName = FallbackFileName;
+
+  if(AllFileName.length() != 0 && AllFileName != FileName) {
+    if(Kernels == Filter || Filter.empty())
+      printModuleToFile(M, AllFileName, Header);
+  }
+}
 
 bool linkBitcode(llvm::Module &M, std::unique_ptr<llvm::Module> OtherM,
                    const std::string &ForcedTriple = "",
@@ -221,6 +303,7 @@ bool LLVMToBackendTranslator::fullTransformation(const std::string &LLVMIR, std:
 }
 
 bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
+  enableModuleStateDumping(M, "input", getCompilationIdentifier());
 
   HIPSYCL_DEBUG_INFO << "LLVMToBackend: Preparing backend flavoring...\n";
 
@@ -238,7 +321,7 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
       InitialOutliningEntrypoints.push_back(FName);
     KernelOutliningPass InitialOutlining{InitialOutliningEntrypoints};
     InitialOutlining.run(M, MAM);
-    
+    enableModuleStateDumping(M, "initial_outlining", getCompilationIdentifier());
     // We need to resolve symbols now instead of after optimization, because we
     // may have to reoutline if the code that is linked in after symbol resolution
     // depends on IR constants.
@@ -256,6 +339,8 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     // Return error in case applying specializations has caused error list to be populated
     if(!Errors.empty())
       return false;
+    
+    enableModuleStateDumping(M, "specialization", getCompilationIdentifier());
 
     // Process stage 2 reflection calls
     ReflectionFields["compiler_backend"] = this->getBackendId();
@@ -265,6 +350,8 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     }
     ProcessS2ReflectionPass S2RP{ReflectionFields};
     S2RP.run(M, MAM);
+
+    enableModuleStateDumping(M, "reflection", getCompilationIdentifier());
 
     // Optimize away unnecessary branches due to backend-specific S2IR constants
     // This is what allows us to specialize code for different backends.
@@ -319,11 +406,15 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     InstructionCleanupPass ICP;
     ICP.run(M, MAM);
 
+    enableModuleStateDumping(M, "jit_optimizations", getCompilationIdentifier());
+
     HIPSYCL_DEBUG_INFO << "LLVMToBackend: Adding backend-specific flavor to IR...\n";
     if(!this->toBackendFlavor(M, PH)) {
       HIPSYCL_DEBUG_INFO << "LLVMToBackend: Flavoring failed\n";
       return false;
     }
+
+    enableModuleStateDumping(M, "backend_flavoring", getCompilationIdentifier());
 
     // Inline again to handle builtin definitions pulled in by backend flavors
     InliningPass.run(M, MAM);
@@ -354,6 +445,10 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
       }
     }
     llvm::AlwaysInlinerPass{}.run(M, MAM);
+
+    enableModuleStateDumping(M, "full_optimizations", getCompilationIdentifier());
+    
+    enableModuleStateDumping(M, "final", getCompilationIdentifier());
 
     bool ContainsUnsetIRConstants = false;
     S2IRConstant::forEachS2IRConstant(M, [&](S2IRConstant C) {
@@ -722,6 +817,16 @@ void LLVMToBackendTranslator::setKnownPtrParamAlignment(const std::string &Funct
 
 void LLVMToBackendTranslator::setReflectionField(const std::string &str, uint64_t value) {
   ReflectionFields[str] = value;
+}
+
+std::string LLVMToBackendTranslator::getCompilationIdentifier() const {
+  std::string Result;
+  for(const auto& K : Kernels) {
+    Result += "<Kernel:"+K+">";
+  }
+  if(Result.empty())
+    return "<no-kernels>";
+  return Result;
 }
 
 }
