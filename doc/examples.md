@@ -18,15 +18,15 @@ std::vector<data_type> add(sycl::queue& q,
   data_type* dev_b = sycl::malloc_device<data_type>(a.size(), q);
   data_type* dev_c = sycl::malloc_device<data_type>(a.size(), q);
 
-  q.memcpy(dev_a, a.data(), sizeof(T) * a.size());
-  q.memcpy(dev_b, b.data(), sizeof(T) * b.size());
-  q.memcpy(dev_c, c.data(), sizeof(T) * c.size());
+  q.memcpy(dev_a, a.data(), sizeof(data_type) * a.size());
+  q.memcpy(dev_b, b.data(), sizeof(data_type) * b.size());
+  q.memcpy(dev_c, c.data(), sizeof(data_type) * c.size());
 
   q.parallel_for(a.size(), [=](sycl::id<1> idx){
     dev_c[idx] = dev_a[idx] + dev_b[idx];
   });
 
-  q.memcpy(c.data(), dev_c, sizeof(T) * c.size());
+  q.memcpy(c.data(), dev_c, sizeof(data_type) * c.size());
   q.wait();
 
   sycl::free(dev_a, q);
