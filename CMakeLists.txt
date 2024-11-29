@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 if(NOT CMAKE_VERSION VERSION_LESS 3.12)
   cmake_policy(SET CMP0074 NEW) # Don't complain about using BOOST_ROOT...
 endif()
