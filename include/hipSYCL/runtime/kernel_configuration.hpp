@@ -256,7 +256,7 @@ public:
 
 private:
   static const void* data_ptr(const char* data) {
-    return data_ptr(std::string{data});
+    return data_ptr(data);
   }
 
   static const void* data_ptr(const std::string& data) {
@@ -278,7 +278,7 @@ private:
   }
 
   static std::size_t data_size(const char* data) {
-    return data_size(std::string{data});
+    return data_size(std::string_view{data});
   }
 
   static std::size_t data_size(const std::string& data) {
