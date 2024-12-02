@@ -122,6 +122,8 @@ std::size_t
 omp_hardware_context::get_property(device_uint_property prop) const {
   switch (prop) {
   case device_uint_property::max_compute_units:
+    // Do not change this; heuristics in algorithms library
+    // use this.
     return omp_get_num_procs();
     break;
   case device_uint_property::max_global_size0:

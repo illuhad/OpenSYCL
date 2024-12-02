@@ -134,31 +134,86 @@ T collective_broadcast(sycl::nd_item<1> idx, T x, int local_id, T* local_mem) {
   }
 }
 
-template <class T, class BinaryOp, class Generator, class Processor>
-T joint_inclusive_group_scan(sycl::nd_item<1> idx, int num_scan_groups,
-                             BinaryOp op, T *local_mem, Generator gen,
-                             Processor result_processor) {
+template <int WorkPerItem, class T, class BinaryOp, class Generator,
+          class Processor, class PrefixHandler>
+void iterate_host_and_inclusive_group_scan(
+    sycl::nd_item<1> idx, BinaryOp op, T *local_mem, std::size_t global_group_id,
+    Generator gen, Processor result_processor,
+    PrefixHandler local_prefix_to_global_prefix) {
+  
   const int lid = idx.get_local_linear_id();
   const int group_size = idx.get_local_range().size();
+
+  const int num_elements = group_size * WorkPerItem;
+  if(lid == 0) {
+    T current_inclusive_scan;
+    for(int i = 0; i < num_elements; ++i) {
+      T current_element = gen(idx, i % WorkPerItem, i);
+      if(i == 0)
+        current_inclusive_scan = current_element;
+      else
+        current_inclusive_scan = op(current_inclusive_scan, current_element);
+      // we store the result array at i+1 to avoid conflicts with the
+      // fallback group broadcast, which uses element 0.
+      local_mem[i+1] = current_inclusive_scan;
+    }
+  }
+  sycl::group_barrier(idx.get_group());
+  T global_prefix = local_prefix_to_global_prefix(
+      // Index is not -1 because we store the array at offset 1.
+      lid, local_mem[group_size * WorkPerItem]);
+  sycl::group_barrier(idx.get_group());
+  if(global_group_id != 0 && lid == 0) {
+    for(int i = 1; i <= num_elements; ++i) {
+      local_mem[i] = op(global_prefix, local_mem[i]);
+    }
+  }
+  sycl::group_barrier(idx.get_group());
+  
+  for(int i = 0; i < WorkPerItem; ++i) {
+    int effective_id = lid * WorkPerItem + i;
+    result_processor(i, effective_id, local_mem[effective_id+1]);
+  }
+}
+
+template <int WorkPerItem, class T, class BinaryOp, class Generator,
+          class Processor, class PrefixHandler>
+void iterate_and_inclusive_group_scan(
+    sycl::nd_item<1> idx, BinaryOp op, T *local_mem, std::size_t global_group_id,
+    Generator gen, Processor result_processor,
+    PrefixHandler local_prefix_to_global_prefix) {
+
+  const int lid = idx.get_local_linear_id();
+  const int group_size = idx.get_local_range().size();
+  
+
   T current_exclusive_prefix;
-  for(int invocation = 0, invocation < num_scan_groups, ++invocation) {
+  T scan_result [WorkPerItem];
+  for(int invocation = 0; invocation < WorkPerItem; ++invocation) {
     int current_id = invocation * group_size + lid;
     T my_element = gen(idx, invocation, current_id);
     T local_scan_result =
         collective_inclusive_group_scan(idx, my_element, op, local_mem);
     
     if(invocation != 0)
-      local_scan_result = op(exclusive_prefix, local_scan_result);
-
-    // need lookback here
-    result_processor(idx, invocation, current_id, local_scan_result);
+      local_scan_result = op(current_exclusive_prefix, local_scan_result);
     
     current_exclusive_prefix = collective_broadcast<T, BinaryOp>(
         idx, local_scan_result, group_size - 1, local_mem);
+    
+    scan_result[invocation] = local_scan_result;
   }
-  // has local prefix here
+  // has local prefix here, this also does lookback
+  T global_prefix = local_prefix_to_global_prefix(lid, current_exclusive_prefix);
 
-  return current_exclusive_prefix;
+  if(global_group_id != 0) {
+    for(int i = 0; i < WorkPerItem; ++i) {
+      scan_result[i] =  op(global_prefix, scan_result[i]);
+    }  
+  }
+  for(int i = 0; i < WorkPerItem; ++i) {
+    result_processor(i, i*group_size+lid, scan_result[i]);
+  }
 }
 
 template <class T, class BinaryOp>
@@ -223,10 +278,11 @@ T load_data_element(Generator &&gen, sycl::nd_item<1> idx, BinaryOp op,
 
 template <bool IsInclusive, class T, class OptionalInitT, class BinaryOp,
           class Generator, class Processor>
-void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
-                 uint32_t *group_counter, BinaryOp op, OptionalInitT init,
-                 std::size_t problem_size, Generator &&gen,
-                 Processor &&processor) {
+void flat_group_scan_kernel(sycl::nd_item<1> idx, T *local_memory,
+                            scratch_data<T> scratch, uint32_t *group_counter,
+                            BinaryOp op, OptionalInitT init,
+                            std::size_t problem_size, Generator &&gen,
+                            Processor &&processor) {
   sycl::atomic_ref<uint32_t, sycl::memory_order::relaxed,
                     sycl::memory_scope::device,
                     sycl::access::address_space::global_space>
@@ -264,10 +320,6 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
   // at global_id-1 instead of global_id.
   T local_scan_result =
           collective_inclusive_group_scan(idx, my_element, op, local_memory);
-  auto generator = [=](auto idx, int group_invocation, int current_id) {
-
-  };
-
 
   uint32_t *status_ptr =
         reinterpret_cast<uint32_t *>(&scratch.group_status[effective_group_id]);
@@ -316,6 +368,142 @@ void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
   }
 
   processor(idx, effective_group_id, global_id, problem_size, local_scan_result);
+}
+
+template <int WorkPerItem, bool IsInclusive, class T, class OptionalInitT,
+          class BinaryOp, class Generator, class Processor>
+void scan_kernel(sycl::nd_item<1> idx, T *local_memory, scratch_data<T> scratch,
+                 uint32_t *group_counter, BinaryOp op, OptionalInitT init,
+                 std::size_t problem_size, Generator &&data_generator,
+                 Processor &&processor) {
+  sycl::atomic_ref<uint32_t, sycl::memory_order::relaxed,
+                    sycl::memory_scope::device,
+                    sycl::access::address_space::global_space>
+      group_id_counter{*group_counter};
+
+  const int local_id = idx.get_local_linear_id();
+  const int local_size = idx.get_local_range().size();
+  uint32_t effective_group_id = idx.get_group_linear_id();
+  if(local_id == 0) {
+    effective_group_id = group_id_counter.fetch_add(static_cast<uint32_t>(1));
+  }
+  effective_group_id = collective_broadcast<uint32_t, BinaryOp>(
+      idx, effective_group_id, 0, reinterpret_cast<uint32_t*>(local_memory));
+  
+
+  auto generator = [=](sycl::nd_item<1> idx, int invocation, int current_local_id) {
+    // This invokes gen for the current work item to obtain our data element
+    // for the scan. If we are dealing with an exclusive scan, load_data_element
+    // shifts the data access by 1, thus allowing us to treat the scan as inclusive
+    // in the subsequent algorithm.
+    // It also applies init to the first data element, if provided.
+    std::size_t global_id =
+        effective_group_id * local_size * WorkPerItem + current_local_id;
+
+    return load_data_element<IsInclusive, T>(
+      data_generator, idx, op, effective_group_id, global_id, problem_size, init);
+  };
+
+  auto local_prefix_to_global_prefix = [=](int local_id,
+                                           const T &local_inclusive_prefix) {
+    uint32_t *status_ptr =
+        reinterpret_cast<uint32_t *>(&scratch.group_status[effective_group_id]);
+    sycl::atomic_ref<uint32_t, sycl::memory_order::acq_rel,
+                     sycl::memory_scope::device,
+                     sycl::access::address_space::global_space>
+        status_ref{*status_ptr};
+
+    // Set group aggregate which we now know after scan. The first group
+    // Can also set its prefix and is done.
+    if (local_id == 0) {
+      if (effective_group_id == 0) {
+        scratch.group_aggregate[effective_group_id] = local_inclusive_prefix;
+        scratch.inclusive_prefix[effective_group_id] = local_inclusive_prefix;
+        status_ref.store(static_cast<uint32_t>(status::prefix_available));
+      } else {
+        scratch.group_aggregate[effective_group_id] = local_inclusive_prefix;
+        status_ref.store(static_cast<uint32_t>(status::aggregate_available));
+      }
+    }
+
+    sycl::group_barrier(idx.get_group());
+
+    // All groups except group 0 need to perform lookback to find their prefix
+    T exclusive_prefix;
+    if(effective_group_id != 0) {
+      if(local_id == 0) {
+        exclusive_prefix = exclusive_prefix_look_back(
+            exclusive_prefix, effective_group_id, scratch.group_status,
+            scratch.group_aggregate, scratch.inclusive_prefix, op);
+      }
+      exclusive_prefix = collective_broadcast<T, BinaryOp>(
+          idx, exclusive_prefix, 0, local_memory);
+
+      // All groups except first need to update their prefix
+      if(local_id == local_size - 1){
+        scratch.inclusive_prefix[effective_group_id] =
+            op(exclusive_prefix, local_inclusive_prefix);
+        status_ref.store(static_cast<uint32_t>(status::prefix_available));
+      }
+    }
+    return exclusive_prefix;
+  };
+
+  auto result_processor = [=](int invocation_id, int current_local_id,
+                              T scan_result) {
+    std::size_t global_id =
+        effective_group_id * local_size * WorkPerItem + current_local_id;
+    processor(idx, effective_group_id, global_id, problem_size, scan_result);
+  };
+
+  __acpp_if_target_sscp(
+      namespace jit = sycl::AdaptiveCpp_jit;
+      if (jit::reflect<jit::reflection_query::compiler_backend>() ==
+          jit::compiler_backend::host) {
+        iterate_host_and_inclusive_group_scan<WorkPerItem>(
+            idx, op, local_memory, effective_group_id, generator,
+            result_processor, local_prefix_to_global_prefix);
+        return;
+      });
+  __acpp_if_target_host(
+    iterate_host_and_inclusive_group_scan<WorkPerItem>(
+            idx, op, local_memory, effective_group_id, generator,
+            result_processor, local_prefix_to_global_prefix);
+        return;
+  );
+  // Only executed for non-host
+  iterate_and_inclusive_group_scan<WorkPerItem>(
+      idx, op, local_memory, effective_group_id, generator, result_processor,
+      local_prefix_to_global_prefix);
+
+}
+
+template<class T>
+constexpr int work_per_item() {
+  if constexpr(!std::is_constructible_v<T>)
+    return 1;
+  else {
+    return 16;
+  }
+}
+
+template <bool IsInclusive, class T, class OptionalInitT,
+          class BinaryOp, class Generator, class Processor>
+void select_and_run_scan_kernel(sycl::nd_item<1> idx,
+                                T *local_memory, scratch_data<T> scratch,
+                                uint32_t *group_counter, BinaryOp op,
+                                OptionalInitT init, std::size_t problem_size,
+                                Generator &&data_generator,
+                                Processor &&processor) {
+  if constexpr (!std::is_constructible_v<T>) {
+    flat_group_scan_kernel<IsInclusive>(idx, local_memory, scratch,
+                                        group_counter, op, init, problem_size,
+                                        data_generator, processor);
+  } else {
+    scan_kernel<work_per_item<T>(), IsInclusive>(
+        idx, local_memory, scratch, group_counter, op, init, problem_size,
+        data_generator, processor);
+  }
 }
 
 } // detail
@@ -386,7 +574,10 @@ decoupled_lookback_scan(sycl::queue &q, util::allocation_group &scratch_alloc,
       "Init argument must be of std::nullopt_t type or exact type of scan "
       "data elements");
 
-  std::size_t num_groups = (problem_size + group_size - 1) / group_size;
+  std::size_t num_items = (problem_size + detail::work_per_item<T>() - 1) /
+                          detail::work_per_item<T>();
+  std::size_t num_groups = (num_items + group_size - 1) / group_size;
+
   detail::scratch_data<T> scratch{scratch_alloc, num_groups};
   uint32_t* group_counter = scratch_alloc.obtain<uint32_t>(1);
 
@@ -401,52 +592,65 @@ decoupled_lookback_scan(sycl::queue &q, util::allocation_group &scratch_alloc,
   if(!q.is_in_order())
     deps.push_back(initialization_evt);
 
+  bool is_host = q.get_device().get_backend() == sycl::backend::omp;
+
   sycl::nd_range<1> kernel_range{num_groups * group_size, group_size};
   if constexpr(detail::can_use_group_algorithms<T, BinaryOp>()) {
-    return q.parallel_for(kernel_range, deps, [=](auto idx) {
-      detail::scan_kernel<IsInclusive>(idx, nullptr, scratch, group_counter, op,
-                                       init, problem_size, gen, processor);
-    });
-  } else {
-    // We need local memory:
-    // - 1 data element per work item
-    // - at least size for one uint32_t to broadcast group id
-    std::size_t local_mem_elements =
-        std::max(group_size, (sizeof(uint32_t) + sizeof(T) - 1) / sizeof(T));
-
-    // This is not entirely correct since max local mem size can also depend
-    // on work group size.
-    // We also assume that there is no other local memory consumer.
-    // TODO Improve this
-    std::size_t max_local_size =
-        q.get_device().get_info<sycl::info::device::local_mem_size>();
-
-    bool has_sufficient_local_memory = static_cast<double>(max_local_size) >=
-                                       1.5 * sizeof(T) * local_mem_elements;
-
-    if(has_sufficient_local_memory) {
-      return q.submit([&](sycl::handler &cgh) {
-        cgh.depends_on(deps);
-
-        sycl::local_accessor<T, 1> local_mem{local_mem_elements, cgh};
-        cgh.parallel_for(kernel_range, [=](auto idx) {
-          detail::scan_kernel<IsInclusive>(idx, &(local_mem[0]),
-                                           scratch, group_counter, op, init,
-                                           problem_size, gen, processor);
-        });
-      });
-    } else {
-      // This is a super inefficient dummy algorithm for now that requires
-      // large scratch storage
-      T* emulated_local_mem = scratch_alloc.obtain<T>(num_groups * local_mem_elements);
-
+    if(!is_host) {
       return q.parallel_for(kernel_range, deps, [=](auto idx) {
-        detail::scan_kernel<IsInclusive>(
-            idx,
-            emulated_local_mem + local_mem_elements * idx.get_group_linear_id(),
-            scratch, group_counter, op, init, problem_size, gen, processor);
+        detail::select_and_run_scan_kernel<IsInclusive>(
+            idx, static_cast<T *>(nullptr), scratch,
+            group_counter, op, init, problem_size, gen, processor);
       });
     }
+  }
+  
+  // We need local memory:
+  // - 1 data element per work item
+  // - at least size for one uint32_t to broadcast group id
+  std::size_t local_mem_elements =
+      std::max(group_size, (sizeof(uint32_t) + sizeof(T) - 1) / sizeof(T));
+  if(is_host) {
+    // host also needs one element per every processed element
+    local_mem_elements *= detail::work_per_item<T>();
+    // ... in addition to broadcast!
+    ++local_mem_elements;
+  }
+
+  // This is not entirely correct since max local mem size can also depend
+  // on work group size.
+  // We also assume that there is no other local memory consumer.
+  // TODO Improve this
+  std::size_t max_local_size =
+      q.get_device().get_info<sycl::info::device::local_mem_size>();
+
+  
+  bool has_sufficient_local_memory =
+      is_host || static_cast<double>(max_local_size) >=
+                      1.5 * sizeof(T) * local_mem_elements;
+
+  if(has_sufficient_local_memory) {
+    return q.submit([&](sycl::handler &cgh) {
+      cgh.depends_on(deps);
+
+      sycl::local_accessor<T, 1> local_mem{local_mem_elements, cgh};
+      cgh.parallel_for(kernel_range, [=](auto idx) {
+        detail::select_and_run_scan_kernel<IsInclusive>(
+            idx, &(local_mem[0]), scratch, group_counter,
+            op, init, problem_size, gen, processor);
+      });
+    });
+  } else {
+    // This is a super inefficient dummy algorithm for now that requires
+    // large scratch storage
+    T* emulated_local_mem = scratch_alloc.obtain<T>(num_groups * local_mem_elements);
+
+    return q.parallel_for(kernel_range, deps, [=](auto idx) {
+      detail::select_and_run_scan_kernel<IsInclusive>(
+          idx,
+          emulated_local_mem + local_mem_elements * idx.get_group_linear_id(),
+          scratch, group_counter, op, init, problem_size, gen, processor);
+    });
   }
 }
 }

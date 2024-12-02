@@ -306,8 +306,9 @@ sycl::event scan(sycl::queue &q, util::allocation_group &scratch_allocations,
 
   std::size_t problem_size = std::distance(first, last);
   std::size_t group_size = 128;
-  if(q.get_device().AdaptiveCpp_device_id().get_backend() == sycl::backend::omp)
+  if(q.get_device().AdaptiveCpp_device_id().get_backend() == sycl::backend::omp) {
     group_size = 1024;
+  }
 
   using T = std::decay_t<decltype(*first)>;
   return scanning::decoupled_lookback_scan<IsInclusive, T>(
