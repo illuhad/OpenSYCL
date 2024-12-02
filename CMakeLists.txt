@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
-if(NOT CMAKE_VERSION VERSION_LESS 3.12)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
   cmake_policy(SET CMP0074 NEW) # Don't complain about using BOOST_ROOT...
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.30)
+    # Suppress warning: "Policy CMP0167 is not set: The FindBoost module is removed."
+    cmake_policy(SET CMP0167 NEW)
+  endif()
 endif()
 
 
