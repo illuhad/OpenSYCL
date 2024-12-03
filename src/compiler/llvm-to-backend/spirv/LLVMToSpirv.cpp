@@ -231,8 +231,14 @@ bool LLVMToSpirvTranslator::translateToBackendFormat(llvm::Module &FlavoredModul
     return false;
   }
 
-  AtScopeExit DestroyInputFile([&]() { auto Err = InputFile->discard(); });
-  AtScopeExit DestroyOutputFile([&]() { auto Err = OutputFile->discard(); });
+  AtScopeExit DestroyInputFile([&]() {
+    if (auto Err = InputFile->discard())
+      ;
+  });
+  AtScopeExit DestroyOutputFile([&]() {
+    if (auto Err = OutputFile->discard())
+      ;
+  });
 
   std::error_code EC;
   llvm::raw_fd_ostream InputStream{InputFile->FD, false};
