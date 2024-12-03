@@ -33,3 +33,44 @@
 * `ACPP_JITOPT_IADS_RELATIVE_THRESHOLD_MIN_DATA`: JIT-time optimization *invariant argument detection & specialization* (active if `ACPP_ADAPTIVITY_LEVEL >= 2`): Only consider kernels with at least many invocations for the relative threshold described above. Default: 1024.
 * `ACPP_JITOPT_IADS_RELATIVE_EVICTION_THRESHOLD`: JIT-time optimization *invariant argument detection & specialization* (active if `ACPP_ADAPTIVITY_LEVEL >= 2`): If the relative frequency of a kernel argument value falls below this threshold, the statistics entry for the the argument value may be evicted if space for other values is needed.
 * `ACPP_ENABLE_ALLOCATION_TRACKING`: If set to 1, allows the AdaptiveCpp runtime to track and register the allocations that it manages. This enables additional JIT-time optimizations. Set to 0 to disable. (Default: 0)
+
+## Environment variables to control dumping IR during JIT compilation
+
+AdaptiveCpp can dump the IR of the code during stage 2 compilation (JIT compilation) at various stages in the processing and optimization pipeline.
+This feature only applies to the AdaptiveCpp generic JIT SSCP compiler (`--acpp-targets=generic`).
+
+It is primarily helpful for AdaptiveCpp developers for debugging or expert users who wish to understand how their input code is translated and processed in LLVM IR.
+
+These environment variables take the shape `ACPP_S2_DUMP_IR_<Stage>` for various stages in the optimization process.
+* If the variable is set to `1`, the IR will be stored in `<original-sourcefile>.ll`.
+* Otherwise, the content is interpreted as a filepath were the IR will be written to.
+
+Within one application run, AdaptiveCpp appends IR dumps to the dump file. When a new application run results in new dumps being generated to the same file, the file will be truncated first.
+
+Available stages for dumping:
+* `ACPP_S2_IR_DUMP_INPUT` - dumps the raw, unoptimized generic input LLVM IR
+* `ACPP_S2_IR_DUMP_INITIAL_OUTLINING` - After initial kernel outlining
+* `ACPP_S2_IR_DUMP_SPECIALIZATION` - After applying specializations to the kernel
+* `ACPP_S2_IR_DUMP_REFLECTION` - After processing JIT-time reflection queries
+* `ACPP_S2_IR_DUMP_JIT_OPTIMIZATIONS` - After processing optimizations that rely on JIT-time information`
+* `ACPP_S2_IR_DUMP_BACKEND_FLAVORING` - After applying the "backend flavor", i.e. turning generic LLVM IR into IR that targets a specific backend.
+* `ACPP_S2_IR_DUMP_FULL_OPTIMIZATIONS` - After running the full LLVM optimization pipeline on the code.
+* `ACPP_S2_IR_DUMP_FINAL` - Final state of the LLVM IR before handing it off to lowering it to backend-specific formats (e.g. PTX, amdgcn ISA, SPIR-V).
+* `ACPP_S2_IR_DUMP_ALL` - Dump all stages.
+
+A dump section for a stage in the dump file will take the following form:
+```
+;---------------- Begin AdaptiveCpp IR dump --------------
+; AdaptiveCpp SSCP S2 IR dump; Compiling kernels: (KERNELS), stage: (STAGENAME)
+
+(LLVM code here)
+;----------------- End AdaptiveCpp IR dump ---------------
+```
+`(STAGENAME)` refers to to one of the stages listed above. `(KERNELS)` is an identifier that describes which kernels AdaptiveCpp is compiling in this IR. It contains the mangled function name of the kernels.
+
+In general, the dump file will contain multiple dump sections if dumping is enabled for multiple stages, or if multiple JIT compilations are triggered (e.g. multiple kernels are launched).
+
+If `ACPP_S2_DUMP_IR_FILTER` filter is non-empty, AdaptiveCpp will only dump IR if the kernel identifier corresponds to the one specified in this variable.
+Note that this can still lead to multiple JIT compilation dumps, e.g. if AdaptiveCpp generates multiple specialized kernels based on runtime information for one C++ kernel.
+
+
