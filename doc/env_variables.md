@@ -48,15 +48,15 @@ These environment variables take the shape `ACPP_S2_DUMP_IR_<Stage>` for various
 Within one application run, AdaptiveCpp appends IR dumps to the dump file. When a new application run results in new dumps being generated to the same file, the file will be truncated first.
 
 Available stages for dumping:
-* `ACPP_S2_IR_DUMP_INPUT` - dumps the raw, unoptimized generic input LLVM IR
-* `ACPP_S2_IR_DUMP_INITIAL_OUTLINING` - After initial kernel outlining
-* `ACPP_S2_IR_DUMP_SPECIALIZATION` - After applying specializations to the kernel
-* `ACPP_S2_IR_DUMP_REFLECTION` - After processing JIT-time reflection queries
-* `ACPP_S2_IR_DUMP_JIT_OPTIMIZATIONS` - After processing optimizations that rely on JIT-time information`
-* `ACPP_S2_IR_DUMP_BACKEND_FLAVORING` - After applying the "backend flavor", i.e. turning generic LLVM IR into IR that targets a specific backend.
-* `ACPP_S2_IR_DUMP_FULL_OPTIMIZATIONS` - After running the full LLVM optimization pipeline on the code.
-* `ACPP_S2_IR_DUMP_FINAL` - Final state of the LLVM IR before handing it off to lowering it to backend-specific formats (e.g. PTX, amdgcn ISA, SPIR-V).
-* `ACPP_S2_IR_DUMP_ALL` - Dump all stages.
+* `ACPP_S2_DUMP_IR_INPUT` - dumps the raw, unoptimized generic input LLVM IR
+* `ACPP_S2_DUMP_IR_INITIAL_OUTLINING` - After initial kernel outlining
+* `ACPP_S2_DUMP_IR_SPECIALIZATION` - After applying specializations to the kernel
+* `ACPP_S2_DUMP_IR_REFLECTION` - After processing JIT-time reflection queries
+* `ACPP_S2_DUMP_IR_JIT_OPTIMIZATIONS` - After processing optimizations that rely on JIT-time information
+* `ACPP_S2_DUMP_IR_BACKEND_FLAVORING` - After applying the "backend flavor", i.e. turning generic LLVM IR into IR that targets a specific backend.
+* `ACPP_S2_DUMP_IR_FULL_OPTIMIZATIONS` - After running the full LLVM optimization pipeline on the code.
+* `ACPP_S2_DUMP_IR_FINAL` - Final state of the LLVM IR before handing it off to lowering it to backend-specific formats (e.g. PTX, amdgcn ISA, SPIR-V).
+* `ACPP_S2_DUMP_IR_ALL` - Dump all stages.
 
 A dump section for a stage in the dump file will take the following form:
 ```
