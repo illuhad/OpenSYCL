@@ -326,7 +326,7 @@ if(BUILD_CLANG_PLUGIN)
   endif()
 
   if(NOT EXISTS ${CLANG_INCLUDE_PATH})
-    message(SEND_ERROR "clang include path ${CLANG_INCLUDE_PATH} does not exist. Please provide clang's internal include path manually: Find the directory where __clang_cuda_runtime_wrapper.h is. Provide this directory for older ROCm versions and the parent directory for newer ones.")
+    message(SEND_ERROR "CLANG_INCLUDE_PATH ${CLANG_INCLUDE_PATH} does not exist. Please provide clang's internal include path manually: Find the directory where __clang_cuda_runtime_wrapper.h is. Provide this directory for older ROCm versions and the parent directory for newer ones.")
   endif()
   if(WITH_ROCM_BACKEND)
     execute_process(COMMAND ${CLANG_EXECUTABLE_PATH} "--version"
