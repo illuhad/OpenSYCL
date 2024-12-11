@@ -8,6 +8,9 @@
  * See file LICENSE in the project root for full license details.
  */
 // SPDX-License-Identifier: BSD-2-Clause
+#ifndef HIPSYCL_RT_KERNEL_CACHE_HPP
+#define HIPSYCL_RT_KERNEL_CACHE_HPP
+
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -23,9 +26,6 @@
 #include "hipSYCL/runtime/kernel_configuration.hpp"
 #include "hipSYCL/runtime/device_id.hpp"
 #include "hipSYCL/runtime/error.hpp"
-
-#ifndef HIPSYCL_RT_KERNEL_CACHE_HPP
-#define HIPSYCL_RT_KERNEL_CACHE_HPP
 
 namespace hipsycl {
 namespace rt {
