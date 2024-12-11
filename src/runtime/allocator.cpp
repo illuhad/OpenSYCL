@@ -15,8 +15,8 @@
 
 namespace hipsycl::rt {
 
-void *allocate_device(backend_allocator *alloc, size_t min_alignment,
-                      size_t size_bytes) {
+void *allocate_device(backend_allocator *alloc, const size_t min_alignment,
+                      const size_t size_bytes) {
   auto *ptr = alloc->raw_allocate(min_alignment, size_bytes);
   if(ptr != nullptr) {
     application::event_handler_layer().on_new_allocation(
@@ -27,8 +27,8 @@ void *allocate_device(backend_allocator *alloc, size_t min_alignment,
   return ptr;
 }
 
-void *allocate_host(backend_allocator *alloc, size_t min_alignment,
-                              size_t bytes) {
+void *allocate_host(backend_allocator *alloc, const size_t min_alignment,
+                    const size_t bytes) {
   auto* ptr = alloc->raw_allocate_optimized_host(min_alignment, bytes);
   if(ptr != nullptr) {
     application::event_handler_layer().on_new_allocation(
@@ -39,7 +39,7 @@ void *allocate_host(backend_allocator *alloc, size_t min_alignment,
   return ptr;
 }
 
-void *allocate_shared(backend_allocator *alloc, size_t bytes) {
+void *allocate_shared(backend_allocator *alloc, const size_t bytes) {
   auto* ptr = alloc->raw_allocate_usm(bytes);
   if(ptr != nullptr) {
     application::event_handler_layer().on_new_allocation(
