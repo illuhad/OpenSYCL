@@ -25,8 +25,7 @@
 #include "hipSYCL/runtime/error.hpp"
 #include "hipSYCL/runtime/kernel_configuration.hpp"
 
-namespace hipsycl {
-namespace rt {
+namespace hipsycl::rt {
 
 enum class compilation_flow {
   integrated_multipass,
@@ -398,8 +397,6 @@ kernel_registrator<KernelT> static_kernel_registration<KernelT>::init = {};
 
 } // detail
 
-
-}
-}
+} // namespace hipsycl::rt
 
 #endif
