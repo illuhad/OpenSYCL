@@ -318,9 +318,19 @@ public:
     // TODO: We might want to allow JIT compilation in parallel at some point
     std::lock_guard<std::mutex> lock{_mutex};
 
-    if(!persistent_cache_lookup(id_of_binary, compiled_binary)){
+    if(!persistent_cache_lookup(id_of_binary, compiled_binary)) {
+      HIPSYCL_DEBUG_INFO << "kernel_cache: JIT-compiling binary for id "
+                         << kernel_configuration::to_string(id_of_binary)
+                         << "\n";
+
+      const auto start_time = std::chrono::high_resolution_clock::now();
       if(!jit_compile(compiled_binary))
         return nullptr;
+      const auto elapsed_time = std::chrono::high_resolution_clock::now() - start_time;
+
+      HIPSYCL_DEBUG_INFO << "kernel_cache: JIT compilation took "
+                         << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count()
+                         << "ms\n";
 
       if(_is_first_jit_compilation) {
         _is_first_jit_compilation = false;
