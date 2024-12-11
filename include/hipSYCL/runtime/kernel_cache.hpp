@@ -252,6 +252,24 @@ private:
 };
 
 class kernel_cache {
+  // Alias for the return type of jit_compiler (expects bool(std::string&))
+  template <typename Callable>
+  using jit_compiler_ret_type_t = std::invoke_result_t<Callable, std::string &>;
+
+  // Alias for the return type of CodeObjectConstructor (expects
+  // code_object*(code_object_id))
+  template <typename Callable>
+  using code_obj_ret_type_t = std::invoke_result_t<Callable, std::string &>;
+
+  // Traits to validate callable types
+  template <typename Callable>
+  constexpr static bool is_valid_jit_compiler_v =
+      std::is_same_v<jit_compiler_ret_type_t<Callable>, bool>;
+
+  template <typename Callable>
+  constexpr static bool is_valid_code_object_constructor_v =
+      std::is_same_v<code_obj_ret_type_t<Callable>, code_object *>;
+
 public:
   using code_object_id = kernel_configuration::id_type;
   using code_object_ptr = std::unique_ptr<const code_object>;
@@ -302,6 +320,9 @@ public:
   /// code_object*(const std::string&). It is expected to return nullptr on error. The JIT-compiled
   /// binary will be passed in as string reference.
   template <class CodeObjectConstructor, class JitCompiler>
+  template <class CodeObjectConstructor, class JitCompiler,
+            typename = std::enable_if_t<is_valid_jit_compiler_v<JitCompiler>>,
+            typename = std::enable_if_t<is_valid_code_object_constructor_v<CodeObjectConstructor>>>
   const code_object *get_or_construct_jit_code_object(code_object_id id_of_code_object,
                                                       code_object_id id_of_binary,
                                                       JitCompiler &&jit_compile,
