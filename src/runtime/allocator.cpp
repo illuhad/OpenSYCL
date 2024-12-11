@@ -10,7 +10,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "hipSYCL/runtime/allocator.hpp"
-#include "hipSYCL/runtime/allocation_tracker.hpp"
 #include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/runtime_event_handlers.hpp"
 
