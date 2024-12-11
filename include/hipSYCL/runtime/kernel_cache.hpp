@@ -122,8 +122,8 @@ public:
   const std::vector<std::string> &get_images_containing_kernel() const;
   hcf_object_id get_hcf_object_id() const;
 
-  const std::vector<rt::kernel_build_flag>& get_compilation_flags() const;
-  const std::vector<std::pair<rt::kernel_build_option, std::string>> &
+  const std::vector<kernel_build_flag>& get_compilation_flags() const;
+  const std::vector<std::pair<kernel_build_option, std::string>> &
   get_compilation_options() const;
 
 private:
@@ -137,8 +137,8 @@ private:
 
   std::vector<std::string> _image_providers;
   
-  std::vector<rt::kernel_build_flag> _compilation_flags;
-  std::vector<std::pair<rt::kernel_build_option, std::string>>
+  std::vector<kernel_build_flag> _compilation_flags;
+  std::vector<std::pair<kernel_build_option, std::string>>
       _compilation_options;
 
   hcf_object_id _id;
@@ -374,7 +374,7 @@ private:
 
   mutable std::mutex _mutex;
 
-  ankerl::unordered_dense::map<code_object_id, code_object_ptr, rt::kernel_id_hash>
+  ankerl::unordered_dense::map<code_object_id, code_object_ptr, kernel_id_hash>
       _code_objects;
   
   bool _is_first_jit_compilation = true;
