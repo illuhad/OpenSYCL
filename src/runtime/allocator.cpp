@@ -13,8 +13,7 @@
 #include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/runtime_event_handlers.hpp"
 
-namespace hipsycl {
-namespace rt {
+namespace hipsycl::rt {
 
 void *allocate_device(backend_allocator *alloc, size_t min_alignment,
                       size_t size_bytes) {
@@ -56,5 +55,4 @@ void deallocate(backend_allocator* alloc, void *mem) {
   application::event_handler_layer().on_deallocation(mem);
 }
 
-}
-}
+} // namespace hipsycl::rt
