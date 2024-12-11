@@ -299,27 +299,30 @@ public:
     return get_or_construct_code_object_impl(id, c);
   }
 
-  /// Obtain or construct code objects. This is for code objects
+  /// \brief Obtain or construct code objects. This is for code objects
   /// which rely on AdaptiveCpp-handled JIT compilation.
-  /// In order to implement optimizations such as persistent on-disk kernel cache,
-  /// we need to have explicit access to the JIT-compiled binary and distinguish
-  /// the act of JIT compilation from constructing the backend code objects (e.g. CUmodule).
+  ///
+  /// In order to implement optimizations such as persistent on-disk kernel
+  /// cache, we need to have explicit access to the JIT-compiled binary and
+  /// distinguish the act of JIT compilation from constructing the backend code
+  /// objects (e.g. CUmodule).
   ///
   /// This is why this function has two factory function arguments, and two ids:
-  /// \c id_of_binary: A unique id of the binary. This value should only include configuration
-  /// that is relevant for the jit-compiled code. It should not depend on any values
-  /// that might vary between application runs (e.g. cl_context), because the binary
-  /// might be persistently cached on-disk.
-  /// \c id_of_code_object: The full id of the backend code object that the user wants to obtain.
-  /// This id may depend on values which vary between application runs, such as cl_context.
-  /// \c j Has signature bool(std::string&). Will be invoked when JIT compilation is triggered, and
-  /// is expected to carry out JIT compilation.
-  /// Should return true if the compilation was successful. The binary output of JIT compilation
-  /// should be stored in the string reference.
-  /// \c c Is expected to turn the JIT-compiled binary into a code_object*. Has signature
-  /// code_object*(const std::string&). It is expected to return nullptr on error. The JIT-compiled
-  /// binary will be passed in as string reference.
-  template <class CodeObjectConstructor, class JitCompiler>
+  /// \param id_of_binary: A unique id of the binary. This value should only include
+  /// configuration that is relevant for the jit-compiled code. It should not
+  /// depend on any values that might vary between application runs (e.g.
+  /// cl_context), because the binary might be persistently cached on-disk.
+  /// \param id_of_code_object: The full id of the backend code object that the user
+  /// wants to obtain. This id may depend on values which vary between
+  /// application runs, such as cl_context.
+  /// \param jit_compile Has signature bool(std::string&). Will be invoked when JIT
+  /// compilation is triggered, and is expected to carry out JIT compilation.
+  /// Should return true if the compilation was successful. The binary output of
+  /// JIT compilation should be stored in the string reference.
+  /// \param c Is expected to turn the JIT-compiled binary into a code_object*. Has
+  /// signature code_object*(const std::string&). It is expected to return
+  /// nullptr on error. The JIT-compiled binary will be passed in as string
+  /// reference.
   template <class CodeObjectConstructor, class JitCompiler,
             typename = std::enable_if_t<is_valid_jit_compiler_v<JitCompiler>>,
             typename = std::enable_if_t<is_valid_code_object_constructor_v<CodeObjectConstructor>>>
