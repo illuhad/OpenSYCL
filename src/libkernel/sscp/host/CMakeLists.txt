@@ -11,10 +11,16 @@ if(WITH_LLVM_TO_HOST)
     half.cpp
     math.cpp
     native.cpp
+    shuffle.cpp
     print.cpp
     relational.cpp
     localmem.cpp
-    subgroup.cpp)
+    subgroup.cpp
+    reduce.cpp
+    broadcast.cpp
+    scan_inclusive.cpp
+    scan_exclusive.cpp
+    collpredicate.cpp)
 
   libkernel_generate_bitcode_target(
       TARGETNAME host 
