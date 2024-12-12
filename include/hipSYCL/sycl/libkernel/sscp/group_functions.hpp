@@ -804,13 +804,13 @@ OutPtr __acpp_joint_inclusive_scan(Group g, InPtr first, InPtr last, OutPtr resu
   const size_t lrange            = g.get_local_range().size();
   const size_t num_elements      = last - first;
   const size_t lid               = g.get_local_linear_id();
-  const size_t elements_per_item = num_elements/lrange + (lid < (num_elements%lrange));
-  
 
+  if(lid == 0 && num_elements > 0){
+    first[0] = binary_op(first[0], init);
+  }
+  __acpp_group_barrier(g);
   OutPtr updated_result = __acpp_joint_inclusive_scan(g, first, last, result, binary_op);
-  
-  for (size_t idx = lid; idx < num_elements ; idx += lrange)
-    updated_result[idx] = binary_op(updated_result[idx], init);
+  __acpp_group_barrier(g);
   return updated_result;
 }
 
@@ -890,26 +890,6 @@ float __acpp_exclusive_scan_over_group(sub_group g, double x, BinaryOperation bi
   return __acpp_sscp_sub_group_exclusive_scan_f64(
       sscp_binary_operation_v<BinaryOperation>, x, identity);
 }
-
-// template<typename T, int N, int Dim, typename BinaryOperation>
-// HIPSYCL_BUILTIN
-// vec<T,N> __acpp_exclusive_scan_over_group(sub_group g, vec<T,N> x, BinaryOperation binary_op) {
-//   vec<T,N> result;
-//   for(int i = 0; i < N; ++i) {
-//     result[i] = __acpp_exclusive_scan_over_group(g, x[i], binary_op);
-//   }
-//   return result;
-// }
-
-// template<typename T, int N, int Dim, typename BinaryOperation>
-// HIPSYCL_BUILTIN
-// marray<T,N> __acpp_exclusive_scan_over_group(group<Dim> g, marray<T,N> x, BinaryOperation binary_op) {
-//   marray<T,N> result;
-//   for(int i = 0; i < N; ++i) {
-//     result[i] = __acpp_exclusive_scan_over_group(g, x[i], binary_op);
-//   }
-//   return result;
-// }
 
 // // exclusive scan group
                                
@@ -1053,12 +1033,14 @@ OutPtr __acpp_joint_exclusive_scan(Group g, InPtr first, InPtr last, OutPtr resu
   const size_t lrange            = g.get_local_range().size();
   const size_t num_elements      = last - first;
   const size_t lid               = g.get_local_linear_id();
-  const size_t elements_per_item = num_elements/lrange + (lid < (num_elements%lrange));
-  
-  OutPtr updated_result = __acpp_joint_exclusive_scan(g, first, last, result, binary_op);
-  
-  for (size_t idx = lid; idx < num_elements ; idx += lrange)
-    updated_result[idx] = binary_op(updated_result[idx], init);
+  __acpp_group_barrier(g);
+  if (lid == 0 && num_elements > 0){
+    first[0] = binary_op(first[0], init);
+    result[0] = init;
+  }
+  __acpp_group_barrier(g);
+  OutPtr updated_result = __acpp_joint_inclusive_scan(g, first, last-1, result+1, binary_op);
+  __acpp_group_barrier(g);
   return updated_result;
 }
 
