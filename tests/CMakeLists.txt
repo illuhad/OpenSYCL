@@ -4,6 +4,7 @@ project(adaptivecpp-tests)
 set(Boost_USE_STATIC_LIBS off)
 set(BUILD_SHARED_LIBS on)
 set(REDUCED_LOCAL_MEM_USAGE OFF CACHE BOOL "Only run tests with reduced local memory usage to allow running on hardware with little local memory.")
+set(ACPP_TEST_WORK_GROUP_SHUFFLE_EXT OFF CACHE BOOL "Enable work group shuffles tests that are an AdaptiveCpp extension.")
 
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
@@ -39,6 +40,9 @@ if(REDUCED_LOCAL_MEM_USAGE)
   add_definitions(-DREDUCED_LOCAL_MEM_USAGE)
 endif()
 
+if(ACPP_TEST_WORK_GROUP_SHUFFLE_EXT)
+  add_definitions(-DACPP_TEST_WORK_GROUP_SHUFFLE_EXT)
+endif()
 
 #Use add_definitions for now for older cmake versions
 cmake_policy(SET CMP0005 NEW)

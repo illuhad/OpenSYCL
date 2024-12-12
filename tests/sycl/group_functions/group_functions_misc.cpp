@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(sub_group_broadcast, T, test_types) {
   }
 }
 
-#if !defined(REDUCED_LOCAL_MEM_USAGE)
+#if defined(ACPP_TEST_WORK_GROUP_SHUFFLE_EXT) and !defined(REDUCED_LOCAL_MEM_USAGE)
 BOOST_AUTO_TEST_CASE_TEMPLATE(group_shuffle_like, T, test_types) {
   const size_t elements_per_thread = 1;
   const auto   data_generator      = [](std::vector<T> &v, size_t local_size,
