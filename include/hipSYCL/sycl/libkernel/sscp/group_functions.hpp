@@ -629,26 +629,6 @@ double __acpp_inclusive_scan_over_group(sub_group g, double x, BinaryOperation b
       sscp_binary_operation_v<BinaryOperation>, x);
 }
 
-template<typename T, int N, typename BinaryOperation>
-HIPSYCL_BUILTIN
-vec<T,N> __acpp_inclusive_scan_over_group(sub_group g, vec<T,N> x, BinaryOperation binary_op) {
-  vec<T,N> result;
-  for(int i = 0; i < N; ++i) {
-    result[i] = __acpp_inclusive_scan_over_group(g, x[i], binary_op);
-  }
-  return result;
-}
-
-template<typename T, int N, typename BinaryOperation>
-HIPSYCL_BUILTIN
-marray<T,N> __acpp_inclusive_scan_over_group(sub_group g, marray<T,N> x, BinaryOperation binary_op) {
-  marray<T,N> result;
-  for(int i = 0; i < N; ++i) {
-    result[i] = __acpp_inclusive_scan_over_group(g, x[i], binary_op);
-  }
-  return result;
-}
-
 // group inclusive scan
                                
 template <
@@ -721,22 +701,24 @@ double __acpp_inclusive_scan_over_group(group<Dim> g, double x, BinaryOperation 
 }
 
 
-template<typename T, int N, int Dim, typename BinaryOperation>
+template<typename Group, typename T, int N, typename BinaryOperation>
 HIPSYCL_BUILTIN
-vec<T,N> __acpp_inclusive_scan_over_group(group<Dim> g, vec<T,N> x, BinaryOperation binary_op) {
+vec<T,N> __acpp_inclusive_scan_over_group(Group g, vec<T,N> x, BinaryOperation binary_op) {
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_inclusive_scan_over_group(g, x[i], binary_op);
+    __acpp_group_barrier(g);
   }
   return result;
 }
 
-template<typename T, int N, int Dim, typename BinaryOperation>
+template<typename Group, typename T, int N, typename BinaryOperation>
 HIPSYCL_BUILTIN
-marray<T,N> __acpp_inclusive_scan_over_group(group<Dim> g, marray<T,N> x, BinaryOperation binary_op) {
+marray<T,N> __acpp_inclusive_scan_over_group(Group g, marray<T,N> x, BinaryOperation binary_op) {
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_inclusive_scan_over_group(g, x[i], binary_op);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -744,7 +726,12 @@ marray<T,N> __acpp_inclusive_scan_over_group(group<Dim> g, marray<T,N> x, Binary
 template<class Group, typename V, typename T, typename BinaryOperation>
 HIPSYCL_BUILTIN
 T __acpp_inclusive_scan_over_group(Group g, V x, T init, BinaryOperation binary_op) {
-  return binary_op(__acpp_inclusive_scan_over_group(g, x, binary_op), init);
+  const size_t lid = g.get_local_linear_id();
+  x = lid == 0 ? binary_op(init, x) : x;
+  __acpp_group_barrier(g);
+  x = __acpp_inclusive_scan_over_group(g, x, binary_op);
+  __acpp_group_barrier(g);
+  return x;
 }
 
 
@@ -974,6 +961,7 @@ vec<T,N> __acpp_exclusive_scan_over_group(Group g, vec<T,N> x, BinaryOperation b
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_exclusive_scan_over_group(g, x[i], binary_op);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -984,6 +972,7 @@ marray<T,N> __acpp_exclusive_scan_over_group(Group g, marray<T,N> x, BinaryOpera
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_exclusive_scan_over_group(g, x[i], binary_op);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1092,6 +1081,7 @@ __acpp_shift_group_left(Group g, vec<T,N> x, typename Group::linear_id_type delt
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_shift_group_left(g, x[i], delta);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1103,6 +1093,7 @@ __acpp_shift_group_left(Group g, marray<T,N> x, typename Group::linear_id_type d
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_shift_group_left(g, x[i], delta);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1152,6 +1143,7 @@ __acpp_shift_group_right(Group g, vec<T,N> x, typename Group::linear_id_type del
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_shift_group_right(g, x[i], delta);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1163,6 +1155,7 @@ __acpp_shift_group_right(Group g, marray<T,N> x, typename Group::linear_id_type 
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_shift_group_right(g, x[i], delta);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1211,6 +1204,7 @@ __acpp_permute_group_by_xor(Group g, vec<T,N> x, typename Group::linear_id_type 
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_permute_group_by_xor(g, x[i], mask);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1222,6 +1216,7 @@ __acpp_permute_group_by_xor(Group g, marray<T,N> x, typename Group::linear_id_ty
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_permute_group_by_xor(g, x[i], mask);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1278,6 +1273,7 @@ __acpp_select_from_group(Group g, vec<T,N> x, typename Group::id_type remote_loc
   vec<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_select_from_group(g, x[i], remote_local_id);
+    __acpp_group_barrier(g);
   }
   return result;
 }
@@ -1289,6 +1285,7 @@ __acpp_select_from_group(Group g, marray<T,N> x, typename Group::id_type remote_
   marray<T,N> result;
   for(int i = 0; i < N; ++i) {
     result[i] = __acpp_select_from_group(g, x[i], remote_local_id);
+    __acpp_group_barrier(g);
   }
   return result;
 }

@@ -97,13 +97,13 @@ __acpp_##type __acpp_sscp_work_group_inclusive_scan_##type(__acpp_sscp_algorithm
     switch(op) \
     { \
         case __acpp_sscp_algorithm_op::plus: \
-            return __acpp_group_exclusive_scan_host_impl(x, plus{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, plus{}); \
         case __acpp_sscp_algorithm_op::multiply: \
-            return __acpp_group_exclusive_scan_host_impl(x, multiply{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, multiply{}); \
         case __acpp_sscp_algorithm_op::min: \
-            return __acpp_group_exclusive_scan_host_impl(x, min{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, min{}); \
         case __acpp_sscp_algorithm_op::max: \
-            return __acpp_group_exclusive_scan_host_impl(x, max{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, max{}); \
         default: \
             return __acpp_##type{}; \
     } \
@@ -119,23 +119,23 @@ __acpp_##type __acpp_sscp_work_group_inclusive_scan_##fn_suffix(__acpp_sscp_algo
     switch(op) \
     { \
         case __acpp_sscp_algorithm_op::plus: \
-            return __acpp_group_exclusive_scan_host_impl(x, plus{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, plus{}); \
         case __acpp_sscp_algorithm_op::multiply: \
-            return __acpp_group_exclusive_scan_host_impl(x, multiply{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, multiply{}); \
         case __acpp_sscp_algorithm_op::min: \
-            return __acpp_group_exclusive_scan_host_impl(x, min{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, min{}); \
         case __acpp_sscp_algorithm_op::max: \
-            return __acpp_group_exclusive_scan_host_impl(x, max{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, max{}); \
         case __acpp_sscp_algorithm_op::bit_and: \
-            return __acpp_group_exclusive_scan_host_impl(x, bit_and{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, bit_and{}); \
         case __acpp_sscp_algorithm_op::bit_or: \
-            return __acpp_group_exclusive_scan_host_impl(x, bit_or{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, bit_or{}); \
         case __acpp_sscp_algorithm_op::bit_xor: \
-            return __acpp_group_exclusive_scan_host_impl(x, bit_xor{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, bit_xor{}); \
         case __acpp_sscp_algorithm_op::logical_and: \
-            return __acpp_group_exclusive_scan_host_impl(x, logical_and{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, logical_and{}); \
         case __acpp_sscp_algorithm_op::logical_or: \
-            return __acpp_group_exclusive_scan_host_impl(x, logical_or{}); \
+            return __acpp_group_inclusive_scan_host_impl(x, logical_or{}); \
         default: \
             return __acpp_##type{}; \
     } \

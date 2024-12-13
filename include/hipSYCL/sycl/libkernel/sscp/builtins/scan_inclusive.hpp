@@ -131,7 +131,7 @@ OutType __acpp_group_inclusive_scan_cudalike_impl(OutType x,BinaryOperation op){
 }
 
 template <typename OutType, typename BinaryOperation> 
-OutType __acpp_group_exclusive_scan_host_impl(OutType x,BinaryOperation op){
+OutType __acpp_group_inclusive_scan_host_impl(OutType x,BinaryOperation op){
 
   OutType* shrd_mem = static_cast<OutType*>(__acpp_sscp_host_get_internal_local_memory());
 
@@ -150,10 +150,9 @@ OutType __acpp_group_exclusive_scan_host_impl(OutType x,BinaryOperation op){
   __acpp_sscp_work_group_barrier(__acpp_sscp_memory_scope::work_group, __acpp_sscp_memory_order::relaxed);
   OutType local_x = x;
   OutType other_x;
-  //TODO: Here we can just call the host inclusive scan
   for (__acpp_int32 i = 1; i < wg_size; i *= 2) {  
-    __acpp_uint32 next_id = wg_lid -i;
-    bool is_nextid_valid = next_id >= 0 && i <= wg_lid;
+    __acpp_int32 next_id = wg_lid -i;
+    bool is_nextid_valid = (next_id >= 0) && (i <= wg_lid);
 
     if (is_nextid_valid){
       other_x=shrd_mem[next_id]; 
@@ -166,7 +165,8 @@ OutType __acpp_group_exclusive_scan_host_impl(OutType x,BinaryOperation op){
     }
     __acpp_sscp_work_group_barrier(__acpp_sscp_memory_scope::work_group, __acpp_sscp_memory_order::relaxed);
   }
-  return local_x; 
+
+  return local_x;
 }
 
 template <typename OutType, typename BinaryOperation> 
