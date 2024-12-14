@@ -20,6 +20,12 @@
 #define HIPSYCL_PLUGIN_API_EXPORT extern "C" __declspec(dllexport)
 #endif
 
+#ifdef _WIN32
+#define HIPSYCL_SHARED_LIBRARY_EXTENSION "dll"
+#else
+#define HIPSYCL_SHARED_LIBRARY_EXTENSION "so"
+#endif
+
 namespace hipsycl {
 namespace rt {
 namespace detail {

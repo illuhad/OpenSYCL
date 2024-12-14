@@ -45,6 +45,10 @@
 namespace hipsycl {
 namespace compiler {
 
+static llvm::cl::opt<bool> EnableCBS{
+    "acpp-cbs", llvm::cl::init(false),
+    llvm::cl::desc{"Enable AdaptiveCpp LLVM accelerated CPU compilation flow."}};
+
 static llvm::cl::opt<bool> EnableLLVMSSCP{
     "acpp-sscp", llvm::cl::init(false),
     llvm::cl::desc{"Enable AdaptiveCpp LLVM SSCP compilation flow"}};
@@ -106,7 +110,7 @@ static llvm::RegisterStandardPasses
 
 }}
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) || defined(ACPP_LLVM_COMPONENT)
 #define HIPSYCL_RESOLVE_AND_QUOTE(V) #V
 #define HIPSYCL_STRINGIFY(V) HIPSYCL_RESOLVE_AND_QUOTE(V)
 #define HIPSYCL_PLUGIN_VERSION_STRING                                                              \
@@ -158,23 +162,25 @@ return {
 
 
 #ifdef HIPSYCL_WITH_ACCELERATED_CPU
-          PB.registerAnalysisRegistrationCallback([](llvm::ModuleAnalysisManager &MAM) {
-            if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
-              MAM.registerPass([] { return SplitterAnnotationAnalysis{}; });
-          });
+          if(EnableCBS){
+            PB.registerAnalysisRegistrationCallback([](llvm::ModuleAnalysisManager &MAM) {
+              if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
+                MAM.registerPass([] { return SplitterAnnotationAnalysis{}; });
+            });
 
-          PB.registerPipelineStartEPCallback([](llvm::ModulePassManager &MPM, OptLevel Opt) {
+            PB.registerPipelineStartEPCallback([](llvm::ModulePassManager &MPM, OptLevel Opt) {
 
-            if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
-              registerCBSPipeline(MPM, Opt, false);
-          });
-          // SROA adds loads / stores without adopting the llvm.access.group MD, need to re-add.
-          // todo: check back with LLVM 13, might be fixed with https://reviews.llvm.org/D103254
-          PB.registerVectorizerStartEPCallback([](llvm::FunctionPassManager &FPM, OptLevel) {
-            if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
-              FPM.addPass(LoopsParallelMarkerPass{});
-          });
+              if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
+                registerCBSPipeline(MPM, Opt, false);
+            });
+            // SROA adds loads / stores without adopting the llvm.access.group MD, need to re-add.
+            // todo: check back with LLVM 13, might be fixed with https://reviews.llvm.org/D103254
+            PB.registerVectorizerStartEPCallback([](llvm::FunctionPassManager &FPM, OptLevel) {
+              if(!CompilationStateManager::getASTPassState().isDeviceCompilation())
+                FPM.addPass(LoopsParallelMarkerPass{});
+            });
 #endif
+          }
         }
   };
 }

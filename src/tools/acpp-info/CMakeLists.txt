@@ -8,6 +8,10 @@ target_include_directories(acpp-info PRIVATE
 
 target_link_libraries(acpp-info PRIVATE acpp-rt)
 
+if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(acpp-info PRIVATE /EHs)
+endif()
+
 # Make sure that acpp-info uses compatible sanitizer flags for sanitized runtime builds
 target_link_libraries(acpp-info PRIVATE ${ACPP_RT_SANITIZE_FLAGS})
 target_compile_options(acpp-info PRIVATE ${ACPP_RT_SANITIZE_FLAGS})

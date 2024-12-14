@@ -13,16 +13,13 @@
 #include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/common/filesystem.hpp"
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
-#include "hipSYCL/compiler/cbs/KernelFlattening.hpp"
 #include "hipSYCL/compiler/cbs/PipelineBuilder.hpp"
-#include "hipSYCL/compiler/cbs/SimplifyKernel.hpp"
 #include "hipSYCL/compiler/cbs/SplitterAnnotationAnalysis.hpp"
-#include "hipSYCL/compiler/llvm-to-backend/AddressSpaceInferencePass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceMap.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/host/HostKernelWrapperPass.hpp"
-#include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/runtime/dylib_loader.hpp"
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -90,55 +87,96 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
     return false;
 
   llvm::ModulePassManager MPM;
-  PH.ModuleAnalysisManager->clear(); // for some reason we need to reset the analyses... otherwise
-                                     // we get a crash at IPSCCP
+  // TODO: Clean me up.
+  // PH.ModuleAnalysisManager->clear(); // for some reason we need to reset the analyses... otherwise
+  //                                    // we get a crash at IPSCCP
+
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
 
   PH.PassBuilder->registerAnalysisRegistrationCallback([](llvm::ModuleAnalysisManager &MAM) {
     MAM.registerPass([] { return SplitterAnnotationAnalysis{}; });
   });
-  PH.PassBuilder->registerModuleAnalyses(*PH.ModuleAnalysisManager);
+  // PH.PassBuilder->registerModuleAnalyses(*PH.ModuleAnalysisManager);
+
+  PH.PassBuilder->registerModuleAnalyses(MAM);
+  PH.PassBuilder->registerCGSCCAnalyses(CGAM);
+  PH.PassBuilder->registerFunctionAnalyses(FAM);
+  PH.PassBuilder->registerLoopAnalyses(LAM);
+  PH.PassBuilder->crossRegisterProxies(LAM, FAM, CGAM, MAM);
   registerCBSPipeline(MPM, hipsycl::compiler::OptLevel::O3, true);
+  HIPSYCL_DEBUG_INFO << "LLVMToHostTranslator: Done registering\n";
 
   llvm::FunctionPassManager FPM;
   FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize});
   MPM.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(FPM)));
 
-  MPM.run(M, *PH.ModuleAnalysisManager);
-
+  // MPM.printPipeline(llvm::outs(),[](llvm::StringRef Name){return Name;});
+  MPM.run(M, MAM);
+  HIPSYCL_DEBUG_INFO << "LLVMToHostTranslator: Done toBackendFlavor\n";
   return true;
 }
 
 bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
                                                     std::string &out) {
-  auto InputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.bc");
-  auto OutputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.so");
+  // TODO: clean me up
+  // auto InputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.bc");
+  // auto OutputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.so");
 
-  if (auto E = InputFile.takeError()) {
-    this->registerError("LLVMToHost: Could not create temp file: " + InputFile->TmpName);
+  llvm::SmallVector<char> InputFile;
+  int InputFD;
+  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host-", ".bc", InputFD, InputFile, llvm::sys::fs::OF_None)){
+    this->registerError("LLVMToHost: Could not create temp input file" + E.message());
     return false;
   }
+  llvm::StringRef InputFileName = InputFile.data();
 
-  if (auto E = OutputFile.takeError()) {
-    this->registerError("LLVMToHost: Could not create temp file: " + OutputFile->TmpName);
+
+  llvm::SmallVector<char> OutputFile;
+  // int InputFD;
+  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host-", HIPSYCL_SHARED_LIBRARY_EXTENSION, OutputFile, llvm::sys::fs::OF_None)){
+    this->registerError("LLVMToHost: Could not create temp input file" + E.message());
     return false;
   }
+  llvm::StringRef OutputFileName = OutputFile.data();
 
-  std::string OutputFilename = OutputFile->TmpName;
 
-  AtScopeExit DestroyInputFile([&]() {
-    if (InputFile->discard())
-      ;
-  });
-  AtScopeExit DestroyOutputFile([&]() {
-    if (OutputFile->discard())
-      ;
-  });
+  // if (auto E = InputFile.takeError()) {
+  //   this->registerError("LLVMToHost: Could not create temp file: " + InputFile->TmpName);
+  //   return false;
+  // }
 
-  std::error_code EC;
-  llvm::raw_fd_ostream InputStream{InputFile->FD, false};
+  // if (auto E = OutputFile.takeError()) {
+  //   this->registerError("LLVMToHost: Could not create temp file: " + OutputFile->TmpName);
+  //   return false;
+  // }
 
-  llvm::WriteBitcodeToFile(FlavoredModule, InputStream);
-  InputStream.flush();
+  // std::string OutputFilename = OutputFile->TmpName;
+  // std::string OutputFilename = "acpp-test.so";
+
+  // AtScopeExit DestroyInputFile([&]() {
+  //   if (InputFile->discard())
+  //     ;
+  // });
+  // AtScopeExit DestroyOutputFile([&]() {
+  //   if (OutputFile->discard())
+  //     ;
+  // });
+
+  {
+    llvm::raw_fd_ostream InputStream{InputFD, true};
+    // std::error_code EC;
+    // llvm::raw_fd_ostream InputStream{"acpp-test.bc", EC};
+
+
+    llvm::WriteBitcodeToFile(FlavoredModule, InputStream);
+    
+    if(InputStream.error()) {HIPSYCL_DEBUG_ERROR << "Error while writing" << InputStream.error().message() << '\n'; }
+    InputStream.flush();
+    if(InputStream.error()) {HIPSYCL_DEBUG_ERROR << "Error while flushing" << InputStream.error().message() << '\n'; }
+  }
 
   const std::string ClangPath = common::filesystem::replace_known_variables(HIPSYCL_CLANG_PATH);
   const std::string CpuFlag = HIPSYCL_HOST_CPU_FLAG;
@@ -150,10 +188,13 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
                                                     "ir",
                                                     "-shared",
                                                     "-Wno-pass-failed",
+                                                    #ifndef _WIN32
                                                     "-fPIC",
+                                                    #endif
                                                     "-o",
-                                                    OutputFilename,
-                                                    InputFile->TmpName};
+                                                    OutputFileName,
+                                                    InputFileName
+                                                    };
 
   std::string ArgString;
   for (const auto &S : Invocation) {
@@ -169,7 +210,7 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
     return false;
   }
 
-  auto ReadResult = llvm::MemoryBuffer::getFile(OutputFile->TmpName, -1);
+  auto ReadResult = llvm::MemoryBuffer::getFile(OutputFileName, -1);
 
   if (auto Err = ReadResult.getError()) {
     this->registerError("LLVMToHost: Could not read result file" + Err.message());
@@ -207,7 +248,7 @@ AddressSpaceMap LLVMToHostTranslator::getAddressSpaceMap() const {
   return ASMap;
 }
 
-std::unique_ptr<LLVMToBackendTranslator>
+HIPSYCL_BACKEND_API_EXPORT std::unique_ptr<LLVMToBackendTranslator>
 createLLVMToHostTranslator(const std::vector<std::string> &KernelNames) {
   return std::make_unique<LLVMToHostTranslator>(KernelNames);
 }

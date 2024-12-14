@@ -20,6 +20,9 @@ set(CXX_FILESYSTEM_HEADER "${CXX_FILESYSTEM_HEADER}" PARENT_SCOPE)
 set(CXX_FILESYSTEM_NAMESPACE "${CXX_FILESYSTEM_NAMESPACE}" PARENT_SCOPE)
 list(REMOVE_AT CMAKE_MODULE_PATH 0)
 
+if(WIN32)
+  target_compile_options(acpp-common PRIVATE /EHs)
+endif()
 
 # to get the search path we need to know the output name, so set it explicitly.
 set(HIPSYCL_COMMON_LIBRARY_OUTPUT_NAME "acpp-common")

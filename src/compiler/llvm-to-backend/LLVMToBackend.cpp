@@ -21,7 +21,7 @@
 #include "hipSYCL/compiler/utils/ProcessFunctionAnnotationsPass.hpp"
 #include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
-#include "hipSYCL/sycl/access.hpp"
+// #include "hipSYCL/sycl/access.hpp"
 
 #include <cstdint>
 
@@ -373,10 +373,20 @@ bool LLVMToBackendTranslator::optimizeFlavoredIR(llvm::Module& M, PassHandler& P
         }
       });
 #endif
+  // TODO: check if this is really necessary.
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
+  PH.PassBuilder->registerModuleAnalyses(MAM);
+  PH.PassBuilder->registerCGSCCAnalyses(CGAM);
+  PH.PassBuilder->registerFunctionAnalyses(FAM);
+  PH.PassBuilder->registerLoopAnalyses(LAM);
+  PH.PassBuilder->crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
   llvm::ModulePassManager MPM =
       PH.PassBuilder->buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
-  MPM.run(M, *PH.ModuleAnalysisManager);
+  MPM.run(M, MAM);
 
   return true;
 }

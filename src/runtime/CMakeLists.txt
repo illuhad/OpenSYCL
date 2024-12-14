@@ -67,6 +67,9 @@ target_include_directories(acpp-rt
 set(HIPSYCL_RT_LIBRARY_OUTPUT_NAME "acpp-rt")
 if(WIN32)
   set_target_properties(acpp-rt PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS On)
+  if(ACPP_LLVM_COMPONENT)
+    target_compile_options(acpp-rt PRIVATE /EHs)
+  endif()
 
   # ensure actual output and expected are equivalent
   set_target_properties(acpp-rt PROPERTIES RUNTIME_OUTPUT_NAME ${HIPSYCL_RT_LIBRARY_OUTPUT_NAME})
@@ -128,6 +131,10 @@ if(WITH_CUDA_BACKEND)
     set_property(TARGET rt-backend-cuda PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
 
+  if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(rt-backend-cuda PRIVATE /EHs)
+  endif()
+
   install(TARGETS rt-backend-cuda
         RUNTIME DESTINATION bin/hipSYCL
         LIBRARY DESTINATION lib/hipSYCL
@@ -174,6 +181,10 @@ if(WITH_ROCM_BACKEND)
     set_property(TARGET rt-backend-hip PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
 
+  if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(rt-backend-hip PRIVATE /EHs)
+  endif()
+
   install(TARGETS rt-backend-hip
         RUNTIME DESTINATION bin/hipSYCL
         LIBRARY DESTINATION lib/hipSYCL
@@ -202,6 +213,10 @@ if(WITH_LEVEL_ZERO_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-ze PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+
+  if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(rt-backend-ze PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-ze
@@ -262,6 +277,10 @@ if(WITH_OPENCL_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-ocl PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+  
+  if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(rt-backend-ocl PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-ocl
@@ -331,6 +350,10 @@ if(WITH_CPU_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-omp PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+  
+  if(WIN32 AND ACPP_LLVM_COMPONENT)
+    target_compile_options(rt-backend-omp PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-omp

@@ -19,10 +19,14 @@ function(libkernel_generate_bitcode_library)
   if(ACPP_LLVM_COMPONENT)
     set(target_depends clang)
   endif()
+  if(WIN32)
+    set(platform_specific -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_USE_MATH_DEFINES)
+  endif()
+
   add_custom_command(
       OUTPUT ${target_output_file}
       COMMAND ${CLANG_EXECUTABLE_PATH} -target ${triple} -fno-exceptions -fno-rtti -O3 -emit-llvm -std=c++17 -DHIPSYCL_SSCP_LIBKERNEL_LIBRARY
-                    -I ${HIPSYCL_SOURCE_DIR}/include ${additional} -o ${target_output_file} -c ${CMAKE_CURRENT_SOURCE_DIR}/${source}
+                    -I ${HIPSYCL_SOURCE_DIR}/include ${additional} ${platform_specific} -o ${target_output_file} -c ${CMAKE_CURRENT_SOURCE_DIR}/${source}
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${source} ${target_depends}
       VERBATIM)
 

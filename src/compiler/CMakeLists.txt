@@ -8,6 +8,8 @@ endif()
 if(NOT ACPP_LLVM_COMPONENT)
   cmake_minimum_required(VERSION 3.5)
   project(acpp-clang)
+else()
+  add_compile_definitions(ACPP_LLVM_COMPONENT)
 endif()
 
 if(NOT HIPSYCL_DEBUG_LEVEL)
@@ -111,11 +113,19 @@ else()
     ${LLVM_BINARY_DIR}/tools/clang/include
   )
 
-  set_property(
-      TARGET clang-cpp
-      APPEND PROPERTY
-          LINK_LIBRARIES obj.acpp-frontend
-  )
+  if(${CLANG_LINK_CLANG_DYLIB})
+    set_property(
+        TARGET clang-cpp
+        APPEND PROPERTY
+            LINK_LIBRARIES obj.acpp-frontend
+    )
+  else()
+    set_property(
+        TARGET clang
+        APPEND PROPERTY
+            LINK_LIBRARIES obj.acpp-frontend
+    )
+  endif()
 
   add_llvm_pass_plugin(${COMPILER_LIBRARY_NAME}
     NO_MODULE

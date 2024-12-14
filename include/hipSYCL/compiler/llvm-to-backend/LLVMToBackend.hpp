@@ -11,6 +11,11 @@
 #ifndef HIPSYCL_LLVM_TO_BACKEND_HPP
 #define HIPSYCL_LLVM_TO_BACKEND_HPP
 
+#ifndef _WIN32
+#define HIPSYCL_BACKEND_API_EXPORT
+#else
+#define HIPSYCL_BACKEND_API_EXPORT __declspec(dllexport)
+#endif
 
 // Note: This file should not include any LLVM headers or include
 // dependencies that rely on LLVM headers in order to not spill
@@ -57,7 +62,12 @@ public:
     static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
                   "Unsupported type for S2 IR constant");
 
+#ifdef _WIN32
+    std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).raw_name();
+    name = name.substr(sizeof(".?AU?$")); // this seems to be prepended here, but not in the actual variable name.
+#else
     std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).name();
+#endif
     setS2IRConstant<T>(name, value);
   }
 

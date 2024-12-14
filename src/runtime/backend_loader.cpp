@@ -85,12 +85,17 @@ std::vector<fs::path> get_plugin_search_paths()
       if(path_buffer.size() >= 1024*1024) // 1MB paths? sure. I think it's time to give up...
         break;
     }
+    AddDllDirectory(fs::path{path_buffer.data()}.parent_path().c_str());
     paths.emplace_back(fs::path{path_buffer.data()}.parent_path() / "hipSYCL");
   }
 #endif
 
-  if(auto install_dir = hipsycl::common::filesystem::get_install_directory(); !install_dir.empty())
+  if(auto install_dir = hipsycl::common::filesystem::get_install_directory(); !install_dir.empty()) {
+#ifdef _WIN32
+    AddDllDirectory((fs::path(install_dir) / HIPSYCL_BACKEND_LIB_FOLDER).c_str());
+#endif
     paths.emplace_back(fs::path(install_dir) / HIPSYCL_BACKEND_LIB_FOLDER / "hipSYCL");
+  }
 
   const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / HIPSYCL_BACKEND_LIB_FOLDER / "hipSYCL";
 
@@ -130,7 +135,7 @@ namespace rt {
 
 void backend_loader::query_backends() {
   std::vector<fs::path> backend_lib_paths = get_plugin_search_paths();
-
+  
 #ifdef __APPLE__
   std::string shared_lib_extension = ".dylib";
 #elif defined(_WIN32)
@@ -145,6 +150,11 @@ void backend_loader::query_backends() {
                         << backend_lib_path << std::endl;
       continue;
     }
+
+#ifdef _WIN32
+    HIPSYCL_DEBUG_INFO << "Add " << (backend_lib_path / "llvm-to-backend").string() << " to dll search path\n";
+    auto DllDirCookie = AddDllDirectory((backend_lib_path / "llvm-to-backend").c_str());
+#endif
 
     HIPSYCL_DEBUG_INFO << "backend_loader: Searching path for backend libs: '"
                       << backend_lib_path << "'" << std::endl;
@@ -170,6 +180,9 @@ void backend_loader::query_backends() {
         }
       }
     }
+#ifdef _WIN32
+    RemoveDllDirectory(DllDirCookie);
+#endif
   }
 }
 

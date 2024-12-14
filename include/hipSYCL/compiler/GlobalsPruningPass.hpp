@@ -40,7 +40,7 @@ struct GlobalsPruningPassLegacy : public llvm::ModulePass {
   bool runOnModule(llvm::Module &M) override;
 };
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) || defined(ACPP_LLVM_COMPONENT)
 class GlobalsPruningPass : public llvm::PassInfoMixin<GlobalsPruningPass> {
 public:
   explicit GlobalsPruningPass() {}

@@ -62,6 +62,7 @@ void __acpp_sscp_kernel(const KernelType& kernel) {
 // No indirection is allowed! If I say, the argument has to be a global variable,
 // I mean it. Directly. No passing through other functions first.
 template <class Kernel>
+[[clang::annotate("acpp_sscp_extract_kernel_name")]]
 void __acpp_sscp_extract_kernel_name(void (*Func)(const Kernel&),
                                         const char *target);
 #pragma clang diagnostic pop

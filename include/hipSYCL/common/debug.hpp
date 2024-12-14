@@ -27,6 +27,8 @@
 
 #ifndef HIPSYCL_COMPILER_COMPONENT
 #include "hipSYCL/runtime/application.hpp"
+#else
+#include <llvm/Support/raw_ostream.h>
 #endif
 
 namespace hipsycl {

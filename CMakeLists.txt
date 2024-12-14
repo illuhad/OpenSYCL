@@ -119,14 +119,18 @@ find_package(HIP QUIET HINTS ${ROCM_PATH} ${ROCM_PATH}/lib/cmake)
 
 #set(WITH_CUDA_NVCXX_ONLY FALSE CACHE BOOL "(Deprecated) Whether to target CUDA exclusively with nvc++")
 
-if(APPLE OR WIN32)
+if(APPLE)
   set(DEFAULT_COMPILER_FEATURES_ENABLED false)
   set(ACPP_COMPILER_FEATURE_PROFILE "none" CACHE STRING "The level of AdaptiveCpp compiler features to enable. If not set to 'full', AdaptiveCpp will run in a degraded mode that may have implications for certain functionalities or performance in certain cases.")
+elseif(WIN32)
+  set(DEFAULT_COMPILER_FEATURES_ENABLED true)
+  set(ACPP_COMPILER_FEATURE_PROFILE "full" CACHE STRING "The level of AdaptiveCpp compiler features to enable. If not set to 'full', AdaptiveCpp will run in a degraded mode that may have implications for certain functionalities or performance in certain cases.")
+  add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_USE_MATH_DEFINES)
 else()
   set(DEFAULT_COMPILER_FEATURES_ENABLED true)
   set(ACPP_COMPILER_FEATURE_PROFILE "full" CACHE STRING "The level of AdaptiveCpp compiler features to enable. If not set to 'full', AdaptiveCpp will run in a degraded mode that may have implications for certain functionalities or performance in certain cases.")
 endif()
-set_property(CACHE ACPP_COMPILER_FEATURE_PROFILE PROPERTY STRINGS full  minimal none)
+set_property(CACHE ACPP_COMPILER_FEATURE_PROFILE PROPERTY STRINGS full minimal none)
 
 
 if (DEFINED WITH_SSCP_COMPILER OR DEFINED WITH_STDPAR_COMPILER OR DEFINED WITH_ACCELERATED_CPU OR DEFINED WITH_CUDA_NVCXX_ONLY)
@@ -141,7 +145,11 @@ set(ACPP_CUSTOM_PROFILE_WITH_ACCELERATED_CPU ${DEFAULT_COMPILER_FEATURES_ENABLED
 
 if(ACPP_COMPILER_FEATURE_PROFILE STREQUAL "full")
   set(WITH_SSCP_COMPILER true)
+  if(WIN32)
   set(WITH_STDPAR_COMPILER true)
+  else()
+  set(WITH_STDPAR_COMPILER false)
+  endif()
   set(WITH_ACCELERATED_CPU true)
 elseif(ACPP_COMPILER_FEATURE_PROFILE STREQUAL "minimal")
   set(WITH_SSCP_COMPILER false)
