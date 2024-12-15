@@ -16,7 +16,7 @@ if(WITH_LLVM_TO_HOST)
     relational.cpp
     localmem.cpp
     subgroup.cpp
-    reduce.cpp
+    reduction.cpp
     broadcast.cpp
     scan_inclusive.cpp
     scan_exclusive.cpp

@@ -16,7 +16,7 @@ if(WITH_LLVM_TO_AMDGPU_AMDHSA)
       localmem.cpp
       shuffle.cpp
       collpredicate.cpp
-      reduce.cpp
+      reduction.cpp
       broadcast.cpp
       scan_inclusive.cpp
       scan_exclusive.cpp
