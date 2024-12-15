@@ -96,10 +96,10 @@ join_path(const std::string &base,
   return current;
 }
 
-std::vector<std::string> list_regular_files(const std::string& directory) {
+std::vector<std::string> list_regular_files(const std::string& directory, std::error_code &EC) {
   fs::path p{directory};
   std::vector<std::string> result;
-  for(const fs::directory_entry& entry : fs::directory_iterator(p)) {
+  for(const fs::directory_entry& entry : fs::directory_iterator(p, EC)) {
     if(fs::is_regular_file(entry.status())) {
       result.push_back(entry.path().string());
     }
@@ -108,9 +108,10 @@ std::vector<std::string> list_regular_files(const std::string& directory) {
 }
 
 std::vector<std::string> list_regular_files(const std::string& directory,
-  const std::string& extension) { 
+                                            const std::string& extension,
+                                            std::error_code &EC) { 
   
-  auto all_files = list_regular_files(directory);
+  auto all_files = list_regular_files(directory, EC);
   std::vector<std::string> result;
   for(const auto& f : all_files) {
     if(fs::path(f).extension().string() == extension)

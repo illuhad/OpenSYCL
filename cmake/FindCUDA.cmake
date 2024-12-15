@@ -37,9 +37,13 @@ else()
       # the CUDAToolkit_LIBRARY_DIR directory and check if this is the right directory.
       if (CMAKE_VERSION VERSION_LESS 3.18 OR NOT CUDAToolkit_LIBRARY_ROOT)
          get_filename_component(CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_DIR} DIRECTORY)
+         if(WIN32)
+            # Nested in architecture specific folder.
+            get_filename_component(CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_ROOT} DIRECTORY)
+         endif()
 
          if (NOT EXISTS "${CUDAToolkit_LIBRARY_ROOT}/nvvm")
-            message(WARNING "CUDAToolkit_LIBRARY_ROOT does not point to the correct directory, try setting it manually. Detected CUDA installation cannot be used.")
+            message(WARNING "CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_ROOT} does not point to the correct directory, try setting it manually. Detected CUDA installation cannot be used.")
             set(CUDAToolkit_FOUND FALSE)
          endif()
       endif()

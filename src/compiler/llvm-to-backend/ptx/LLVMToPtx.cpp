@@ -70,15 +70,16 @@ private:
     std::vector<std::string> SubDir {"nvvm", "libdevice"};
     std::string BitcodeDir = common::filesystem::join_path(CUDAPath, SubDir);
 
-    try {
-      auto Files = common::filesystem::list_regular_files(BitcodeDir);
-      for(const auto& F : Files) {
-        if (F.find("libdevice.") != std::string::npos && F.find(".bc") != std::string::npos) {
-          Out = F;
-          return true;
-        }
+    std::error_code EC;
+    auto Files = common::filesystem::list_regular_files(BitcodeDir, EC);
+    if(EC) return false;
+    
+    for(const auto& F : Files) {
+      if (F.find("libdevice.") != std::string::npos && F.find(".bc") != std::string::npos) {
+        Out = F;
+        return true;
       }
-    }catch(...) { /* false will be returned anyway at this point */ }
+    }
 
     return false;
   }

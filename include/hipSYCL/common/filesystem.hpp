@@ -36,9 +36,11 @@ std::string
 join_path(const std::string &base,
           const std::vector<std::string> &additional_components);
 
-std::vector<std::string> list_regular_files(const std::string &directory);
 std::vector<std::string> list_regular_files(const std::string &directory,
-                                            const std::string &extension);
+                                            std::error_code &EC);
+std::vector<std::string> list_regular_files(const std::string &directory,
+                                            const std::string &extension,
+                                            std::error_code &EC);
 
 /// Writes data atomically to filename
 bool atomic_write(const std::string& filename, const std::string& data);
