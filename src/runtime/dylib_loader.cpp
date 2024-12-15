@@ -83,6 +83,8 @@ void *load_library(const std::string &filename, std::string_view loader) {
   HIPSYCL_DEBUG_INFO << loader << ": Loading library: '" << filename << "'\n";
   if (HMODULE handle = LoadLibraryExA(filename.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)) {
     return static_cast<void *>(handle);
+  } else if(HMODULE handle = LoadLibraryA(filename.c_str())){
+    return static_cast<void *>(handle);
   } else {
     DWORD errorCode = GetLastError();
     HIPSYCL_DEBUG_WARNING << loader << ": Could not load library: "
