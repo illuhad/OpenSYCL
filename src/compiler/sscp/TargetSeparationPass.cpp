@@ -8,6 +8,7 @@
  * See file LICENSE in the project root for full license details.
  */
 // SPDX-License-Identifier: BSD-2-Clause
+#include "hipsycl/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/sscp/TargetSeparationPass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/compiler/sscp/KernelOutliningPass.hpp"
@@ -22,6 +23,7 @@
 #include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/common/hcf_container.hpp"
 
+#include <cctype>
 #include <cstddef>
 
 #include <llvm/IR/Instructions.h>
@@ -191,6 +193,22 @@ struct KernelInfo {
   }
 };
 
+void replaceInvalidCharsInSymbolNames(llvm::Module &M) {
+#ifdef _WIN32
+    auto UpdateName = [](auto &S) {
+      std::string Name(S.getName());
+      replaceInvalidCharsInSymbolName(Name);
+      S.setName(Name);
+    };
+
+    for(auto &F : M) {
+      UpdateName(F);
+    }
+    for(auto &G : M.globals()){
+      UpdateName(G);
+    }
+#endif
+}
 
 std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
                                                const std::vector<std::string>& DynamicFunctions,
@@ -284,6 +302,8 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
     }
   }
 
+  replaceInvalidCharsInSymbolNames(*DeviceModule);
+
   EntrypointPreparationPass EPP{ExportAllSymbols};
   EPP.run(*DeviceModule, DeviceMAM);
   
@@ -315,8 +335,8 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
   KernelOutliningPass KP{EPP.getOutliningEntrypoints()};
   KP.run(*DeviceModule, DeviceMAM);
 
-   // Scan for imported function definitions
-   ImportedSymbolsOutput.clear();
+  // Scan for imported function definitions
+  ImportedSymbolsOutput.clear();
   for(auto& F : *DeviceModule) {
     if(F.size() == 0) {
       // We currently use the heuristic that functions are imported

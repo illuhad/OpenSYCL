@@ -9,9 +9,11 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
+#include "hipsycl/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/sscp/HostKernelNameExtractionPass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/common/debug.hpp"
+
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
@@ -49,6 +51,9 @@ llvm::PreservedAnalyses HostKernelNameExtractionPass::run(llvm::Module &M,
           std::string KernelName;
           if (llvm::Function *KernelFunc = llvm::dyn_cast<llvm::Function>(CI->getOperand(0))) {
             KernelName = KernelFunc->getName();
+#ifdef _WIN32
+            replaceInvalidCharsInSymbolName(KernelName);
+#endif
           } else {
             HIPSYCL_DEBUG_WARNING << "HostKernelNameExtractionPass: Could not find kernel name "
                                       "for __acpp_sscp_extract_kernel_name invocation: "

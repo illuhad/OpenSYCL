@@ -11,6 +11,7 @@
 #ifndef HIPSYCL_LLVM_TO_BACKEND_HPP
 #define HIPSYCL_LLVM_TO_BACKEND_HPP
 
+#include "Utils.hpp"
 #ifndef _WIN32
 #define HIPSYCL_BACKEND_API_EXPORT
 #else
@@ -65,6 +66,7 @@ public:
 #ifdef _WIN32
     std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).raw_name();
     name = name.substr(sizeof(".?AU?$")); // this seems to be prepended here, but not in the actual variable name.
+    replaceInvalidCharsInSymbolName(name);
 #else
     std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).name();
 #endif

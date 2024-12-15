@@ -343,6 +343,18 @@ private:
   llvm::SmallDenseMap<llvm::Type*, llvm::Type*> PointerWrapperTypes;
 };
 
+inline bool isValidCharInSymbolName(char C) {
+  return std::isalnum(C) || C == '_' || C == '$' || C == '.';
+}
+
+inline void replaceInvalidCharsInSymbolName(std::string &Name) {
+  for (auto &C : Name) {
+    if (!isValidCharInSymbolName(C)) {
+      C = '_';
+    }
+  }
+}
+
 
 }
 }
