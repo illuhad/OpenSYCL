@@ -356,11 +356,10 @@ result cuda_queue::submit_kernel(kernel_operation &op, const dag_node_ptr& node)
 }
 
 result cuda_queue::submit_prefetch(prefetch_operation& op, const dag_node_ptr& node) {
+  cuda_instrumentation_guard instrumentation{this, op, node.get()};
 #ifndef _WIN32
-  
   cudaError_t err = cudaSuccess;
   
-  cuda_instrumentation_guard instrumentation{this, op, node.get()};
   if (op.get_target().is_host()) {
     err = cudaMemPrefetchAsync(op.get_pointer(), op.get_num_bytes(),
                                         cudaCpuDeviceId, get_stream());
