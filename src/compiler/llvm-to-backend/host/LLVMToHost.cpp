@@ -121,55 +121,28 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
 
 bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
                                                     std::string &out) {
-  // TODO: clean me up
-  // auto InputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.bc");
-  // auto OutputFile = llvm::sys::fs::TempFile::create("acpp-sscp-host-%%%%%%.so");
 
   llvm::SmallVector<char> InputFile;
   int InputFD;
-  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host-", ".bc", InputFD, InputFile, llvm::sys::fs::OF_None)){
+  // don't use fs::TempFile, as we can't unlock the file for the clang invocation later... (Windows)
+  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host", "bc", InputFD, InputFile, llvm::sys::fs::OF_None)){
     this->registerError("LLVMToHost: Could not create temp input file" + E.message());
     return false;
   }
   llvm::StringRef InputFileName = InputFile.data();
 
+  AtScopeExit RemoveInputFile([&](){auto Err = llvm::sys::fs::remove(InputFileName);});
 
   llvm::SmallVector<char> OutputFile;
-  // int InputFD;
-  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host-", HIPSYCL_SHARED_LIBRARY_EXTENSION, OutputFile, llvm::sys::fs::OF_None)){
+  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host", HIPSYCL_SHARED_LIBRARY_EXTENSION, OutputFile, llvm::sys::fs::OF_None)){
     this->registerError("LLVMToHost: Could not create temp input file" + E.message());
     return false;
   }
   llvm::StringRef OutputFileName = OutputFile.data();
-
-
-  // if (auto E = InputFile.takeError()) {
-  //   this->registerError("LLVMToHost: Could not create temp file: " + InputFile->TmpName);
-  //   return false;
-  // }
-
-  // if (auto E = OutputFile.takeError()) {
-  //   this->registerError("LLVMToHost: Could not create temp file: " + OutputFile->TmpName);
-  //   return false;
-  // }
-
-  // std::string OutputFilename = OutputFile->TmpName;
-  // std::string OutputFilename = "acpp-test.so";
-
-  // AtScopeExit DestroyInputFile([&]() {
-  //   if (InputFile->discard())
-  //     ;
-  // });
-  // AtScopeExit DestroyOutputFile([&]() {
-  //   if (OutputFile->discard())
-  //     ;
-  // });
+  AtScopeExit RemoveOutputFile([&](){auto Err = llvm::sys::fs::remove(OutputFileName);});
 
   {
     llvm::raw_fd_ostream InputStream{InputFD, true};
-    // std::error_code EC;
-    // llvm::raw_fd_ostream InputStream{"acpp-test.bc", EC};
-
 
     llvm::WriteBitcodeToFile(FlavoredModule, InputStream);
     
