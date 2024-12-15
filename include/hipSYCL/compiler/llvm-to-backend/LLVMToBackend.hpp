@@ -11,7 +11,6 @@
 #ifndef HIPSYCL_LLVM_TO_BACKEND_HPP
 #define HIPSYCL_LLVM_TO_BACKEND_HPP
 
-#include "Utils.hpp"
 #ifndef _WIN32
 #define HIPSYCL_BACKEND_API_EXPORT
 #else
@@ -41,6 +40,18 @@ namespace hipsycl {
 namespace compiler {
 
 struct PassHandler;
+
+inline bool isValidCharInSymbolName(char C) {
+  return std::isalnum(C) || C == '_' || C == '$' || C == '.';
+}
+
+inline void replaceInvalidCharsInSymbolName(std::string &Name) {
+  for (auto &C : Name) {
+    if (!isValidCharInSymbolName(C)) {
+      C = '_';
+    }
+  }
+}
 
 struct TranslationHints {
   std::optional<std::size_t> RequestedLocalMemSize;

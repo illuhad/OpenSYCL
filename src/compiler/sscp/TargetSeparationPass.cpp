@@ -8,7 +8,7 @@
  * See file LICENSE in the project root for full license details.
  */
 // SPDX-License-Identifier: BSD-2-Clause
-#include "hipsycl/compiler/llvm-to-backend/Utils.hpp"
+#include "hipsycl/compiler/llvm-to-backend/LLVMToBackend.hpp"
 #include "hipSYCL/compiler/sscp/TargetSeparationPass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/compiler/sscp/KernelOutliningPass.hpp"
