@@ -41,18 +41,6 @@ namespace compiler {
 
 struct PassHandler;
 
-inline bool isValidCharInSymbolName(char C) {
-  return std::isalnum(C) || C == '_' || C == '$' || C == '.';
-}
-
-inline void replaceInvalidCharsInSymbolName(std::string &Name) {
-  for (auto &C : Name) {
-    if (!isValidCharInSymbolName(C)) {
-      C = '_';
-    }
-  }
-}
-
 struct TranslationHints {
   std::optional<std::size_t> RequestedLocalMemSize;
   std::optional<std::size_t> SubgroupSize;

@@ -9,7 +9,7 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
-#include "hipsycl/compiler/llvm-to-backend/LLVMToBackend.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
 #include "hipSYCL/compiler/sscp/HostKernelNameExtractionPass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/common/debug.hpp"
