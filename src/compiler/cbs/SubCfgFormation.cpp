@@ -127,7 +127,8 @@ getLocalSizeArgumentFromAnnotation(llvm::Function &F) {
   for (auto &BB : F)
     for (auto &I : BB)
       if (auto *UI = llvm::dyn_cast<llvm::CallInst>(&I))
-        if (hipsycl::llvmutils::starts_with(UI->getCalledFunction()->getName(), "llvm.var.annotation")) {
+        if (hipsycl::llvmutils::starts_with(UI->getCalledFunction()->getName(),
+                                            "llvm.var.annotation")) {
           HIPSYCL_DEBUG_INFO << *UI << '\n';
           llvm::GlobalVariable *AnnotateStr = nullptr;
           if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(UI->getOperand(1));
@@ -142,8 +143,8 @@ getLocalSizeArgumentFromAnnotation(llvm::Function &F) {
             if (auto *Data =
                     llvm::dyn_cast<llvm::ConstantDataSequential>(AnnotateStr->getInitializer())) {
               if (Data->isString() &&
-		  hipsycl::llvmutils::starts_with(Data->getAsString(),
-						  "hipsycl_nd_kernel_local_size_arg")) {
+                  hipsycl::llvmutils::starts_with(Data->getAsString(),
+                                                  "hipsycl_nd_kernel_local_size_arg")) {
                 if (auto *BC = llvm::dyn_cast<llvm::BitCastInst>(UI->getOperand(0)))
                   return {BC->getOperand(0), UI};
                 return {UI->getOperand(0), UI};
@@ -350,6 +351,13 @@ void createLoopsAround(llvm::Function &F, llvm::BasicBlock *AfterBB,
   // todo: replace `ret` with branch to innermost latch
 
   VMap[mergeGVLoadsInEntry(F, LocalIdGlobalNamesRotated[0])] = IndVars[0];
+
+  // in case code references all dimensions, we need to set the remaining dimensions to 0
+  for (size_t D = Dim; D < 3; ++D) {
+    auto ID = mergeGVLoadsInEntry(F, LocalIdGlobalNamesRotated[D]);
+    ID->replaceAllUsesWith(Builder.getIntN(Idx->getType()->getIntegerBitWidth(), 0));
+    ID->eraseFromParent();
+  }
 
   VMap[ContiguousIdx] = Idx;
   ContiguousIdx = Idx;
@@ -1311,7 +1319,6 @@ void createLoopsAroundKernel(llvm::Function &F, llvm::DominatorTree &DT, llvm::L
 
   Body = Body->getSingleSuccessor();
 
-
   llvm::SmallVector<llvm::BasicBlock *, 4> ExitBBs;
   llvm::BasicBlock *ExitBB = llvm::BasicBlock::Create(F.getContext(), "exit", &F);
   llvm::IRBuilder<> Bld{ExitBB};
@@ -1352,10 +1359,13 @@ void createLoopsAroundKernel(llvm::Function &F, llvm::DominatorTree &DT, llvm::L
   llvm::remapInstructionsInBlocks(Blocks, VMap);
 
   // remove uses of the undefined global id variables
-  for (int D = 0; D < Dim; ++D)
+  for (int D = 0; D < 3; ++D)
     if (auto *Load =
-            llvm::cast_or_null<llvm::LoadInst>(getLoadForGlobalVariable(F, LocalIdGlobalNames[D])))
+            llvm::cast_or_null<llvm::LoadInst>(mergeGVLoadsInEntry(F, LocalIdGlobalNames[D]))) {
+      if (D >= Dim)
+        Load->replaceAllUsesWith(llvm::ConstantInt::get(Load->getType(), 0));
       Load->eraseFromParent();
+    }
   HIPSYCL_DEBUG_EXECUTE_VERBOSE(F.viewCFG())
 }
 
