@@ -296,6 +296,16 @@ if(WITH_CPU_BACKEND)
     omp/omp_hardware_manager.cpp
     omp/omp_queue.cpp)
 
+  if(TARGET omp) # ACPP_LLVM_COMPONENT with openmp active
+    set(OpenMP_CXX_INCLUDE_DIRS ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+    get_target_property(hipSYCL_OpenMP_CXX_LIBRARIES omp LINK_LIBRARIES)
+    string(JOIN " " hipSYCL_OpenMP_CXX_LIBRARIES ${hipSYCL_OpenMP_CXX_LIBRARIES})
+    set(hipSYCL_OpenMP_CXX_LIBRARIES "${LIBOMP_LIB_NAME} ${hipSYCL_OpenMP_CXX_LIBRARIES}")
+    
+    set(OMP_COMPILE_FLAGS ${OPENMP_TEST_OPENMP_FLAGS})
+    string(STRIP ${OMP_COMPILE_FLAGS} OMP_COMPILE_FLAGS)
+    set(OMP_TARGET omp)
+  else()
     # OMP_ROOT and/or OpenMP_ROOT is not defined by default on Mac
     if (APPLE)
       if (NOT DEFINED OpenMP_ROOT AND NOT DEFINED OMP_ROOT)
@@ -312,16 +322,6 @@ if(WITH_CPU_BACKEND)
     endif()
 
     find_package(OpenMP REQUIRED)
-    
-    target_include_directories(rt-backend-omp PRIVATE
-      ${HIPSYCL_SOURCE_DIR}/include 
-      ${ACPP_BINARY_ROOT}/include)
-
-    if(WITH_SSCP_COMPILER)
-      target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)
-      target_compile_definitions(rt-backend-omp PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
-      target_link_libraries(rt-backend-omp PRIVATE llvm-to-host)
-    endif()
 
     if(APPLE)
       if(CMAKE_VERSION VERSION_LESS "3.16")
@@ -331,21 +331,33 @@ if(WITH_CPU_BACKEND)
       string(JOIN " " hipSYCL_OpenMP_CXX_LIBRARIES ${OpenMP_CXX_LIBRARIES})
       set(hipSYCL_OpenMP_CXX_LIBRARIES ${hipSYCL_OpenMP_CXX_LIBRARIES} PARENT_SCOPE)
     endif()
-  
-  list(LENGTH OpenMP_CXX_LIBRARIES OpenMP_CXX_LIBRARIES_LENGTH)
-  if(WIN32 AND ${OpenMP_CXX_LIBRARIES_LENGTH} EQUAL 0)
-    # FindOpenMP does a bad job here, finding any library.. so add some more hints..
-    find_library(hipSYCL_OpenMP_libomp_LIBRARY
-      NAMES libomp libgomp libiomp5 HINTS
-      ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
-      ${LLVM_PREFIX_DIR}/lib
-    )
-    target_link_libraries(rt-backend-omp PRIVATE ${hipSYCL_OpenMP_libomp_LIBRARY})
+
+    list(LENGTH OpenMP_CXX_LIBRARIES OpenMP_CXX_LIBRARIES_LENGTH)
+    if(WIN32 AND ${OpenMP_CXX_LIBRARIES_LENGTH} EQUAL 0)
+      # FindOpenMP does a bad job here, finding any library.. so add some more hints..
+      find_library(hipSYCL_OpenMP_libomp_LIBRARY
+        NAMES libomp libgomp libiomp5 HINTS
+        ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
+        ${LLVM_PREFIX_DIR}/lib
+      )
+      target_link_libraries(rt-backend-omp PRIVATE ${hipSYCL_OpenMP_libomp_LIBRARY})
+    endif()
+
+    set(OMP_TARGET OpenMP::OpenMP_CXX)
   endif()
 
-  target_link_libraries(rt-backend-omp PRIVATE acpp-rt  OpenMP::OpenMP_CXX)
+  target_include_directories(rt-backend-omp PRIVATE
+    ${HIPSYCL_SOURCE_DIR}/include 
+    ${ACPP_BINARY_ROOT}/include)
 
-  target_compile_options(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
+  if(WITH_SSCP_COMPILER)
+    target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)
+    target_compile_definitions(rt-backend-omp PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
+    target_link_libraries(rt-backend-omp PRIVATE llvm-to-host)
+  endif()
+  target_link_libraries(rt-backend-omp PRIVATE acpp-rt ${OMP_TARGET})
+
+  target_compile_options(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS} ${OMP_COMPILE_FLAGS})
   target_link_libraries(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
 
   if(is_ipo_supported)
