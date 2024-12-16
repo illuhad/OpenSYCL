@@ -35,14 +35,19 @@ llvm::PreservedAnalyses HostKernelNameExtractionPass::run(llvm::Module &M,
                                                           llvm::ModuleAnalysisManager &MAM) {
 
 
-  llvm::SmallVector<llvm::Function*> SSCPKernelNameExtractionFunctions;
+  llvm::SmallPtrSet<llvm::Function*, 16> SSCPKernelNameExtractionFunctions;
   utils::findFunctionsWithStringAnnotations(M, [&](llvm::Function* F, llvm::StringRef Annotation){
     if(F) {
       if(Annotation.compare(SSCPExtractKernelNameIdentifierAnnotation) == 0){
-        SSCPKernelNameExtractionFunctions.push_back(F);
+        SSCPKernelNameExtractionFunctions.insert(F);
       }
     }
   });
+  for (auto &F : M) {
+    if (F.getName().find(SSCPExtractKernelNameIdentifier) != std::string::npos) {
+      SSCPKernelNameExtractionFunctions.insert(&F);
+    }
+  }
   for(auto* F : SSCPKernelNameExtractionFunctions){
     for(auto U : F->users()) {
       if(auto CI = llvm::dyn_cast<llvm::CallBase>(U)) {
