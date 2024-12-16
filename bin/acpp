@@ -1453,7 +1453,7 @@ class omp_accelerated_invocation:
         "-fplugin=" + self._config.acpp_plugin_path
         , "-fpass-plugin=" + self._config.acpp_plugin_path
         , "-D__ACPP_USE_ACCELERATED_CPU__"
-        , "-mllvm", "-acpp-sscp"
+        , "-mllvm", "-acpp-cbs"
       ]
     flags += self._cxx_flags
 
