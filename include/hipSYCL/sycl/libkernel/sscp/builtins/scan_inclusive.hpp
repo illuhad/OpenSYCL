@@ -11,15 +11,7 @@
 #ifndef HIPSYCL_SSCP_SCAN_INCLUSIVE_BUILTINS_HPP
 #define HIPSYCL_SSCP_SCAN_INCLUSIVE_BUILTINS_HPP
 
-#include "barrier.hpp"
 #include "builtin_config.hpp"
-#include "core_typed.hpp"
-#include "hipSYCL/sycl/libkernel/detail/half_representation.hpp"
-#include "hipSYCL/sycl/libkernel/sscp/builtins/detail/shuffle.hpp"
-#include "hipSYCL/sycl/libkernel/sscp/builtins/shuffle.hpp"
-#include "hipSYCL/sycl/libkernel/sscp/builtins/subgroup.hpp"
-#include "scan_exclusive.hpp"
-#include "utils.hpp"
 
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_int8 __acpp_sscp_work_group_inclusive_scan_i8(__acpp_sscp_algorithm_op op, __acpp_int8 x);

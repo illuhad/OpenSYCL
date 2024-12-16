@@ -13,19 +13,22 @@
 
 #include "../builtin_config.hpp"
 
+namespace hipsycl::libkernel::sscp {
+
 template<typename T>
-T __acpp_sscp_sub_group_select(T, __acpp_int32) = delete;
+T sg_select(T, __acpp_int32) = delete;
 
 template<>
-__acpp_int8 __acpp_sscp_sub_group_select<__acpp_int8>(__acpp_int8 value, __acpp_int32 id);
+__acpp_int8 sg_select<__acpp_int8>(__acpp_int8 value, __acpp_int32 id);
 
 template<>
-__acpp_int16 __acpp_sscp_sub_group_select<__acpp_int16>(__acpp_int16 value, __acpp_int32 id);
+__acpp_int16 sg_select<__acpp_int16>(__acpp_int16 value, __acpp_int32 id);
 
 template<>
-__acpp_int32 __acpp_sscp_sub_group_select<__acpp_int32>(__acpp_int32 value, __acpp_int32 idx);
+__acpp_int32 sg_select<__acpp_int32>(__acpp_int32 value, __acpp_int32 idx);
 
 template<>
-__acpp_int64 __acpp_sscp_sub_group_select<__acpp_int64>(__acpp_int64 value, __acpp_int32 id);
+__acpp_int64 sg_select<__acpp_int64>(__acpp_int64 value, __acpp_int32 id);
 
+}
 #endif
