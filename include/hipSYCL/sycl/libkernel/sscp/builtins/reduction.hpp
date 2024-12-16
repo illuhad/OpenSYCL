@@ -8,12 +8,10 @@
  * See file LICENSE in the project root for full license details.
  */
 // SPDX-License-Identifier: BSD-2-Clause
-#include "builtin_config.hpp"
-#include "hipSYCL/sycl/libkernel/detail/half_representation.hpp"
-
 #ifndef HIPSYCL_SSCP_REDUCTION_BUILTINS_HPP
 #define HIPSYCL_SSCP_REDUCTION_BUILTINS_HPP
 
+#include "builtin_config.hpp"
 
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_int8 __acpp_sscp_work_group_reduce_i8(__acpp_sscp_algorithm_op op, __acpp_int8 x);
@@ -48,8 +46,6 @@ __acpp_f32 __acpp_sscp_work_group_reduce_f32(__acpp_sscp_algorithm_op op, __acpp
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_f64 __acpp_sscp_work_group_reduce_f64(__acpp_sscp_algorithm_op op, __acpp_f64 x);
 
-
-
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_int8 __acpp_sscp_sub_group_reduce_i8(__acpp_sscp_algorithm_op op, __acpp_int8 x);
 
@@ -82,6 +78,5 @@ __acpp_f32 __acpp_sscp_sub_group_reduce_f32(__acpp_sscp_algorithm_op op, __acpp_
 
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_f64 __acpp_sscp_sub_group_reduce_f64(__acpp_sscp_algorithm_op op, __acpp_f64 x);
-
 
 #endif

@@ -186,7 +186,8 @@ OutPtr joint_exclusive_scan(Group g, InPtr first, InPtr last, OutPtr result,
                                           first, last, result, binary_op);
 }
 
-template<class Group, typename V, typename T, typename BinaryOperation>
+template<class Group, typename V, typename T, typename BinaryOperation,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
 HIPSYCL_BUILTIN
 T exclusive_scan_over_group(Group g, V x, T init, BinaryOperation binary_op) {
   HIPSYCL_RETURN_DISPATCH_GROUP_ALGORITHM(__acpp_exclusive_scan_over_group,

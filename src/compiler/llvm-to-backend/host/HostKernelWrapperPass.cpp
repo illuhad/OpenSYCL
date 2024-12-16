@@ -111,6 +111,11 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
                               {Bld.getInt64(0), Bld.getInt32(Array), Bld.getInt32(D)}),
         Name);
   };
+
+  auto setConstantLocalId = [&](llvm::StringRef Name){
+    return Bld.getInt(llvm::APInt(SizeT->getScalarSizeInBits(), 0));
+  };
+
   std::array<llvm::Value *, 3> NumGroups;
   NumGroups[0] = LoadFromContext(0, 0, "num_groups_x");
   NumGroups[1] = LoadFromContext(0, 1, "num_groups_y");
@@ -125,6 +130,11 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
   LocalSize[0] = LoadFromContext(2, 0, "local_size_x");
   LocalSize[1] = LoadFromContext(2, 1, "local_size_y");
   LocalSize[2] = LoadFromContext(2, 2, "local_size_z");
+
+  std::array<llvm::Value*, 3> LocalIds;
+  LocalIds[0] = setConstantLocalId("local_id_x");
+  LocalIds[1] = setConstantLocalId("local_id_y");
+  LocalIds[2] = setConstantLocalId("local_id_z");
 
   auto LocalMemPtr = Bld.CreateLoad(
       VoidPtrT,
@@ -172,6 +182,7 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
     replaceUsesOfGVWith(*Wrapper, cbs::NumGroupsGlobalNames[I], NumGroups[I]);
     replaceUsesOfGVWith(*Wrapper, cbs::GroupIdGlobalNames[I], GroupIds[I]);
     replaceUsesOfGVWith(*Wrapper, cbs::LocalSizeGlobalNames[I], LocalSize[I]);
+    replaceUsesOfGVWith(*Wrapper, cbs::LocalIdGlobalNames[I], LocalIds[I]);
   }
   replaceUsesOfGVWith(*Wrapper, cbs::SscpDynamicLocalMemoryPtrName, LocalMemPtr);
   replaceUsesOfGVWith(*Wrapper, cbs::SscpInternalLocalMemoryPtrName, InternalLocalMemPtr);
