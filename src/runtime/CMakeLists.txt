@@ -305,6 +305,7 @@ if(WITH_CPU_BACKEND)
     set(OMP_COMPILE_FLAGS ${OPENMP_TEST_OPENMP_FLAGS})
     separate_arguments(OMP_COMPILE_FLAGS)
     set(OMP_TARGET omp)
+    get_target_property(OMP_INCLUDE_DIR omp BINARY_DIR)
   else()
     # OMP_ROOT and/or OpenMP_ROOT is not defined by default on Mac
     if (APPLE)
@@ -348,7 +349,8 @@ if(WITH_CPU_BACKEND)
 
   target_include_directories(rt-backend-omp PRIVATE
     ${HIPSYCL_SOURCE_DIR}/include 
-    ${ACPP_BINARY_ROOT}/include)
+    ${ACPP_BINARY_ROOT}/include
+    ${OMP_INCLUDE_DIR})
 
   if(WITH_SSCP_COMPILER)
     target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)
