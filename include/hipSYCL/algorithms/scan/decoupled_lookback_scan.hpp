@@ -34,6 +34,54 @@ enum class status : uint32_t {
 };
 
 template<class T>
+struct native_operation {
+  using type = T;
+};
+
+template<class T>
+struct native_operation<std::plus<T>> {
+  using type = sycl::plus<T>;
+};
+
+template<class T>
+struct native_operation<std::multiplies<T>> {
+  using type = sycl::multiplies<T>;
+};
+
+template<class T>
+using native_operation_t = typename native_operation<T>::type;
+
+template<class T>
+struct is_native_operation : public std::false_type {};
+
+template<class T>
+struct is_native_operation<sycl::plus<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::multiplies<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::bit_and<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::bit_or<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::bit_xor<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::logical_and<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::logical_or<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::minimum<T>> : public std::true_type {};
+
+template<class T>
+struct is_native_operation<sycl::maximum<T>> : public std::true_type {};
+
+template<class T>
 struct scratch_data {
   scratch_data(util::allocation_group &scratch, std::size_t num_groups) {
     group_aggregate = scratch.obtain<T>(num_groups);
@@ -92,16 +140,21 @@ T sequential_scan(sycl::nd_item<1> idx, T my_element, BinaryOp op,
 }
 
 template<class T, class BinaryOp>
-constexpr bool can_use_group_algorithms() {
-  // TODO
-  return false;
+constexpr bool can_use_group_scan() {
+  return std::is_arithmetic_v<T> && is_native_operation<BinaryOp>::value;
+}
+
+template<class T>
+constexpr bool can_use_group_broadcast() {
+  return std::is_arithmetic_v<T>;
 }
 
 template <class T, class BinaryOp>
 T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
                                   BinaryOp op, T *local_mem) {
-  if constexpr(can_use_group_algorithms<T, BinaryOp>()) {
-    // TODO
+  if constexpr(can_use_group_scan<T, native_operation_t<BinaryOp>>()) {
+    return sycl::inclusive_scan_over_group(idx.get_group(), my_element,
+                                           native_operation_t<BinaryOp>{});
   } else {
     namespace jit = sycl::AdaptiveCpp_jit;
     __acpp_if_target_sscp(
@@ -121,8 +174,8 @@ T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
 
 template<class T, class BinaryOp>
 T collective_broadcast(sycl::nd_item<1> idx, T x, int local_id, T* local_mem) {
-  if constexpr(can_use_group_algorithms<T, BinaryOp>()) {
-    // TODO
+  if constexpr(can_use_group_broadcast<T>()) {
+    return sycl::group_broadcast(idx.get_group(), x, local_id);
   } else {
     if(idx.get_local_linear_id() == local_id) {
       *local_mem = x;
@@ -189,6 +242,7 @@ void iterate_and_inclusive_group_scan(
 
   T current_exclusive_prefix;
   T scan_result [WorkPerItem];
+
   for(int invocation = 0; invocation < WorkPerItem; ++invocation) {
     int current_id = invocation * group_size + lid;
     T my_element = gen(idx, invocation, current_id);
@@ -595,7 +649,8 @@ decoupled_lookback_scan(sycl::queue &q, util::allocation_group &scratch_alloc,
   bool is_host = q.get_device().get_backend() == sycl::backend::omp;
 
   sycl::nd_range<1> kernel_range{num_groups * group_size, group_size};
-  if constexpr(detail::can_use_group_algorithms<T, BinaryOp>()) {
+  if constexpr (detail::can_use_group_scan<T, BinaryOp>() &&
+                detail::can_use_group_broadcast<T>()) {
     if(!is_host) {
       return q.parallel_for(kernel_range, deps, [=](auto idx) {
         detail::select_and_run_scan_kernel<IsInclusive>(
@@ -604,7 +659,7 @@ decoupled_lookback_scan(sycl::queue &q, util::allocation_group &scratch_alloc,
       });
     }
   }
-  
+
   // We need local memory:
   // - 1 data element per work item
   // - at least size for one uint32_t to broadcast group id
