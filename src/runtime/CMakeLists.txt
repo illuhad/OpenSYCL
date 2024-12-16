@@ -67,7 +67,7 @@ target_include_directories(acpp-rt
 set(HIPSYCL_RT_LIBRARY_OUTPUT_NAME "acpp-rt")
 if(WIN32)
   set_target_properties(acpp-rt PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS On)
-  if(ACPP_LLVM_COMPONENT)
+  if(ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(acpp-rt PRIVATE /EHs)
   endif()
 
@@ -131,7 +131,7 @@ if(WITH_CUDA_BACKEND)
     set_property(TARGET rt-backend-cuda PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
 
-  if(WIN32 AND ACPP_LLVM_COMPONENT)
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(rt-backend-cuda PRIVATE /EHs)
   endif()
 
@@ -181,7 +181,7 @@ if(WITH_ROCM_BACKEND)
     set_property(TARGET rt-backend-hip PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
 
-  if(WIN32 AND ACPP_LLVM_COMPONENT)
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(rt-backend-hip PRIVATE /EHs)
   endif()
 
@@ -215,7 +215,7 @@ if(WITH_LEVEL_ZERO_BACKEND)
     set_property(TARGET rt-backend-ze PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
 
-  if(WIN32 AND ACPP_LLVM_COMPONENT)
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(rt-backend-ze PRIVATE /EHs)
   endif()
 
@@ -279,7 +279,7 @@ if(WITH_OPENCL_BACKEND)
     set_property(TARGET rt-backend-ocl PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
   
-  if(WIN32 AND ACPP_LLVM_COMPONENT)
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(rt-backend-ocl PRIVATE /EHs)
   endif()
 
@@ -303,7 +303,7 @@ if(WITH_CPU_BACKEND)
     set(hipSYCL_OpenMP_CXX_LIBRARIES "${LIBOMP_LIB_NAME} ${hipSYCL_OpenMP_CXX_LIBRARIES}")
     
     set(OMP_COMPILE_FLAGS ${OPENMP_TEST_OPENMP_FLAGS})
-    string(STRIP "${OMP_COMPILE_FLAGS}" OMP_COMPILE_FLAGS)
+    separate_arguments(OMP_COMPILE_FLAGS)
     set(OMP_TARGET omp)
   else()
     # OMP_ROOT and/or OpenMP_ROOT is not defined by default on Mac
@@ -364,7 +364,7 @@ if(WITH_CPU_BACKEND)
     set_property(TARGET rt-backend-omp PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
   
-  if(WIN32 AND ACPP_LLVM_COMPONENT)
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND NOT MINGW)
     target_compile_options(rt-backend-omp PRIVATE /EHs)
   endif()
 
