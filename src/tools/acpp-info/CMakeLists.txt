@@ -8,7 +8,7 @@ target_include_directories(acpp-info PRIVATE
 
 target_link_libraries(acpp-info PRIVATE acpp-rt)
 
-if(WIN32 AND ACPP_LLVM_COMPONENT)
+if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
     target_compile_options(acpp-info PRIVATE /EHs)
 endif()
 
