@@ -303,7 +303,7 @@ if(WITH_CPU_BACKEND)
     set(hipSYCL_OpenMP_CXX_LIBRARIES "${LIBOMP_LIB_NAME} ${hipSYCL_OpenMP_CXX_LIBRARIES}")
     
     set(OMP_COMPILE_FLAGS ${OPENMP_TEST_OPENMP_FLAGS})
-    string(STRIP ${OMP_COMPILE_FLAGS} OMP_COMPILE_FLAGS)
+    string(STRIP "${OMP_COMPILE_FLAGS}" OMP_COMPILE_FLAGS)
     set(OMP_TARGET omp)
   else()
     # OMP_ROOT and/or OpenMP_ROOT is not defined by default on Mac
