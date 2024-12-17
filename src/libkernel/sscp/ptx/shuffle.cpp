@@ -32,6 +32,47 @@ __acpp_int64 hipsycl::libkernel::sscp::sg_select<__acpp_int64>(__acpp_int64 valu
   return __acpp_sscp_sub_group_select_i64(value, id);
 }
 
+template <>
+__acpp_int8 hipsycl::libkernel::sscp::sg_shift_left<__acpp_int8>(__acpp_int8 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shl_i8(value, id);
+}
+
+template <>
+__acpp_int16 hipsycl::libkernel::sscp::sg_shift_left<__acpp_int16>(__acpp_int16 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shl_i16(value, id);
+}
+
+template <>
+__acpp_int32 hipsycl::libkernel::sscp::sg_shift_left<__acpp_int32>(__acpp_int32 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shl_i32(value, id);
+}
+
+template <>
+__acpp_int64 hipsycl::libkernel::sscp::sg_shift_left<__acpp_int64>(__acpp_int64 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shl_i64(value, id);
+}
+
+
+template <>
+__acpp_int8 hipsycl::libkernel::sscp::sg_shift_right<__acpp_int8>(__acpp_int8 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shr_i8(value, id);
+}
+
+template <>
+__acpp_int16 hipsycl::libkernel::sscp::sg_shift_right<__acpp_int16>(__acpp_int16 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shr_i16(value, id);
+}
+
+template <>
+__acpp_int32 hipsycl::libkernel::sscp::sg_shift_right<__acpp_int32>(__acpp_int32 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shr_i32(value, id);
+}
+
+template <>
+__acpp_int64 hipsycl::libkernel::sscp::sg_shift_right<__acpp_int64>(__acpp_int64 value, __acpp_int32 id) {
+  return __acpp_sscp_sub_group_shr_i64(value, id);
+}
+
 constexpr unsigned int FULL_MASK = 0xffffffff;
 
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
