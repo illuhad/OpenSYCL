@@ -32,7 +32,7 @@ __acpp_int64 hipsycl::libkernel::sscp::sg_select<__acpp_int64>(__acpp_int64 valu
   return __acpp_sscp_sub_group_select_i64(value, id);
 }
 
-unsigned int FULL_MASK = 0xffffffff;
+constexpr unsigned int FULL_MASK = 0xffffffff;
 
 HIPSYCL_SSCP_CONVERGENT_BUILTIN
 __acpp_int8 __acpp_sscp_sub_group_shl_i8(__acpp_int8 value, __acpp_uint32 delta) {
