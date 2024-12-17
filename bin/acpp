@@ -1454,9 +1454,10 @@ class omp_accelerated_invocation:
         , "-fpass-plugin=" + self._config.acpp_plugin_path
       ]
     if self._config.is_plugin_linked_into_llvm or not sys.platform.startswith("win32"):
-      flags += [
-        "-D__ACPP_USE_ACCELERATED_CPU__"
-        , "-mllvm", "-acpp-cbs"]
+      flags += ["-D__ACPP_USE_ACCELERATED_CPU__"]
+    if self._config.is_plugin_linked_into_llvm:
+      flags += ["-mllvm", "-acpp-cbs"]
+    
     flags += self._cxx_flags
 
     return flags

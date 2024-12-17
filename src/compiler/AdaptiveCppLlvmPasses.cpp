@@ -45,9 +45,13 @@
 namespace hipsycl {
 namespace compiler {
 
+#ifdef ACPP_LLVM_COMPONENT
 static llvm::cl::opt<bool> EnableCBS{
     "acpp-cbs", llvm::cl::init(false),
     llvm::cl::desc{"Enable AdaptiveCpp LLVM accelerated CPU compilation flow."}};
+#else
+static bool EnableCBS = true;
+#endif
 
 static llvm::cl::opt<bool> EnableLLVMSSCP{
     "acpp-sscp", llvm::cl::init(false),
