@@ -667,15 +667,15 @@ result cuda_queue::submit_sscp_kernel_from_code_object(
         ptx_image, target_arch_name, hcf_object, kernel_names, device, _config};
     result r = exec_obj->get_build_result();
 
-    HIPSYCL_DEBUG_INFO
-        << "cuda_queue: Successfully compiled SSCP kernels to module " << exec_obj->get_module()
-        << std::endl;
-
     if(!r.is_success()) {
       register_error(r);
       delete exec_obj;
       return nullptr;
     }
+
+    HIPSYCL_DEBUG_INFO
+        << "cuda_queue: Successfully compiled SSCP kernels to module " << exec_obj->get_module()
+        << std::endl;
 
     if(kernel_names.size() == 1)
       exec_obj->get_jit_output_metadata().kernel_retained_arguments_indices =
