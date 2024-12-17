@@ -162,6 +162,11 @@ std::string replace_known_variables(std::string path) {
   return path;
 }
 
+persistent_storage &persistent_storage::get() {
+  static persistent_storage t;
+  return t;
+}
+
 persistent_storage::persistent_storage() {
 #ifndef _WIN32
 

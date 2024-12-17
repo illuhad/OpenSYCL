@@ -53,10 +53,7 @@ std::string replace_known_variables(const std::string path);
 
 class persistent_storage {
 public:
-  static persistent_storage& get() {
-    static persistent_storage t;
-    return t;
-  }
+  static persistent_storage& get();
 
   const std::string& get_base_dir() const {
     return _base_dir;

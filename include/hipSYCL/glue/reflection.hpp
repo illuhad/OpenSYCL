@@ -11,8 +11,7 @@
 #ifndef HIPSYCL_REFLECTION_HPP
 #define HIPSYCL_REFLECTION_HPP
 
-#include <mutex>
-#include <unordered_map>
+#include "hipSYCL/runtime/support/reflection.hpp"
 
 template <class StructT>
 void __acpp_introspect_flattened_struct(void *s, int **num_flattened_members,
@@ -62,40 +61,10 @@ private:
   type_kind* _member_kinds;
 };
 
-namespace detail {
-
-class symbol_information {
-public:
-  static symbol_information& get() {
-    static symbol_information si;
-    return si;
-  }
-
-  void register_function_symbol(const void* address, const char* name) {
-    std::lock_guard<std::mutex> lock{_mutex};
-    _symbol_names[address] = name;
-  }
-
-  const char* resolve_symbol_name(const void* address) const {
-    std::lock_guard<std::mutex> lock{_mutex};
-    auto it = _symbol_names.find(address);
-    if(it == _symbol_names.end())
-      return nullptr;
-    return it->second;
-  }
-private:
-  symbol_information() = default;
-  std::unordered_map<const void*, const char*> _symbol_names;
-  mutable std::mutex _mutex;
-};
-
-}
-
 template<class Ret, typename... Args>
 const char* resolve_function_name(Ret (*func)(Args...)) {
-  return detail::symbol_information::get().resolve_symbol_name((void*)func);
+  return rt::support::symbol_information::get().resolve_symbol_name((void*)func);
 }
-
 
 }
 
@@ -108,7 +77,7 @@ extern "C" void __acpp_function_annotation_needs_function_ptr_argument_reflectio
 __attribute__((used))
 inline void __acpp_reflection_associate_function_pointer(const void *func_ptr,
                                              const char *func_name) {
-  hipsycl::glue::reflection::detail::symbol_information::get()
+  hipsycl::rt::support::symbol_information::get()
       .register_function_symbol(func_ptr, func_name);
 }
 

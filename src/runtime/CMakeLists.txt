@@ -47,7 +47,9 @@ add_library(acpp-rt SHARED
   adaptivity_engine.cpp
   generic/async_worker.cpp
   hw_model/memcpy.cpp
-  serialization/serialization.cpp)
+  serialization/serialization.cpp
+  support/reflection.cpp
+)
 
 target_compile_options(acpp-rt PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
 target_link_libraries(acpp-rt PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS} acpp-common Threads::Threads)

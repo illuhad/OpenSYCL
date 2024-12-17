@@ -76,6 +76,8 @@ public:
 class CompilationStateManager
 {
 public:
+  // is "okay" in header for now, as frontend & pass plugins are always
+  // linked (together) statically in the end 
   static CompilationStateManager& get()
   {
     static CompilationStateManager m;
