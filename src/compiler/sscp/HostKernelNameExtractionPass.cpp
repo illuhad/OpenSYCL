@@ -56,7 +56,7 @@ llvm::PreservedAnalyses HostKernelNameExtractionPass::run(llvm::Module &M,
           std::string KernelName;
           if (llvm::Function *KernelFunc = llvm::dyn_cast<llvm::Function>(CI->getOperand(0))) {
             KernelName = KernelFunc->getName();
-#ifdef _WIN32
+#ifdef _MSC_VER
             replaceInvalidCharsInSymbolName(KernelName);
 #endif
           } else {

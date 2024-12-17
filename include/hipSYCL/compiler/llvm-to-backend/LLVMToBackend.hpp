@@ -62,7 +62,7 @@ public:
     static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
                   "Unsupported type for S2 IR constant");
 
-#ifdef _WIN32
+#ifdef _MSC_VER // Windows - not MINGW!
     std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).raw_name();
     name = name.substr(sizeof(".?AU?$")); // this seems to be prepended here, but not in the actual variable name.
     replaceInvalidCharsInSymbolName(name);

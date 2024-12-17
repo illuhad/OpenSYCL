@@ -194,7 +194,7 @@ struct KernelInfo {
 };
 
 void replaceInvalidCharsInSymbolNames(llvm::Module &M) {
-#ifdef _WIN32
+#ifdef _MSC_VER
     auto UpdateName = [](auto &S) {
       std::string Name(S.getName());
       replaceInvalidCharsInSymbolName(Name);
