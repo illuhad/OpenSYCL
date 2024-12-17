@@ -73,7 +73,7 @@ jobs:
          cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE/acpp_install" -DBOOST_ROOT="$env:GITHUB_WORKSPACE/boost_1_81_0" -DBoost_COMPILER=-clang17 -DBoost_ARCHITECTURE=-x64
          ninja install
          
-    - name: Build and run CPU tests
+    - name: Build CPU tests
       shell: powershell
       run: |
         $env:PATH = "$env:GITHUB_WORKSPACE\llvm\bin;$env:PATH"
@@ -85,6 +85,22 @@ jobs:
         cd build
         cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DACPP_TARGETS=omp -DBOOST_ROOT="$env:GITHUB_WORKSPACE/boost_1_81_0" -DBoost_COMPILER=-clang17 -DBoost_ARCHITECTURE=-x64 -DAdaptiveCpp_DIR="$env:GITHUB_WORKSPACE\acpp_install\lib\cmake\AdaptiveCpp"
         ninja
+    - name: Run sycl_tests
+      shell: powershell
+      run: |
+        $env:PATH = "$env:GITHUB_WORKSPACE\llvm\bin;$env:PATH"
+        $env:PATH = "$env:GITHUB_WORKSPACE\ninja_install;$env:PATH"
+        $env:PATH = "$env:GITHUB_WORKSPACE\acpp_install\bin;$env:PATH"
 
+        cd $env:GITHUB_WORKSPACE\tests
         .\sycl_tests
+    - name: Run rt_tests
+      shell: powershell
+      run: |
+        $env:PATH = "$env:GITHUB_WORKSPACE\llvm\bin;$env:PATH"
+        $env:PATH = "$env:GITHUB_WORKSPACE\ninja_install;$env:PATH"
+        $env:PATH = "$env:GITHUB_WORKSPACE\acpp_install\bin;$env:PATH"
+
+        cd $env:GITHUB_WORKSPACE\tests
         .\rt_tests
+
