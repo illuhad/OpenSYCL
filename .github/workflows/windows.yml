@@ -92,7 +92,7 @@ jobs:
         $env:PATH = "$env:GITHUB_WORKSPACE\ninja_install;$env:PATH"
         $env:PATH = "$env:GITHUB_WORKSPACE\acpp_install\bin;$env:PATH"
 
-        cd $env:GITHUB_WORKSPACE\tests
+        cd $env:GITHUB_WORKSPACE\tests\build
         .\sycl_tests
     - name: Run rt_tests
       shell: powershell
@@ -101,6 +101,6 @@ jobs:
         $env:PATH = "$env:GITHUB_WORKSPACE\ninja_install;$env:PATH"
         $env:PATH = "$env:GITHUB_WORKSPACE\acpp_install\bin;$env:PATH"
 
-        cd $env:GITHUB_WORKSPACE\tests
+        cd $env:GITHUB_WORKSPACE\tests\build
         .\rt_tests
 
