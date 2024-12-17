@@ -28,6 +28,7 @@
 #include <typeinfo>
 #include <functional>
 #include "AddressSpaceMap.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
 #include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
