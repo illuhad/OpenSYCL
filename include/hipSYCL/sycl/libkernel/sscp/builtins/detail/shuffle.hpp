@@ -30,5 +30,38 @@ __acpp_int32 sg_select<__acpp_int32>(__acpp_int32 value, __acpp_int32 idx);
 template<>
 __acpp_int64 sg_select<__acpp_int64>(__acpp_int64 value, __acpp_int32 id);
 
+
+template<typename T>
+T sg_shift_left(T, __acpp_int32) = delete;
+
+template<>
+__acpp_int8 sg_shift_left<__acpp_int8>(__acpp_int8 value, __acpp_int32 id);
+
+template<>
+__acpp_int16 sg_shift_left<__acpp_int16>(__acpp_int16 value, __acpp_int32 id);
+
+template<>
+__acpp_int32 sg_shift_left<__acpp_int32>(__acpp_int32 value, __acpp_int32 idx);
+
+template<>
+__acpp_int64 sg_shift_left<__acpp_int64>(__acpp_int64 value, __acpp_int32 id);
+
+
+template<typename T>
+T sg_shift_right(T, __acpp_int32) = delete;
+
+template<>
+__acpp_int8 sg_shift_right<__acpp_int8>(__acpp_int8 value, __acpp_int32 id);
+
+template<>
+__acpp_int16 sg_shift_right<__acpp_int16>(__acpp_int16 value, __acpp_int32 id);
+
+template<>
+__acpp_int32 sg_shift_right<__acpp_int32>(__acpp_int32 value, __acpp_int32 idx);
+
+template<>
+__acpp_int64 sg_shift_right<__acpp_int64>(__acpp_int64 value, __acpp_int32 id);
+
 }
+
 #endif
