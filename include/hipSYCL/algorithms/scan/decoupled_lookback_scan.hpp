@@ -150,9 +150,9 @@ constexpr bool can_use_group_broadcast() {
 }
 
 template <class T, class BinaryOp>
-T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
+T collective_inclusive_group_scan(const sycl::nd_item<1>& idx, T my_element,
                                   BinaryOp op, T *local_mem) {
-  if constexpr(can_use_group_scan<T, native_operation_t<BinaryOp>>()) {
+  if constexpr(can_use_group_scan<T, native_operation_t<BinaryOp>>())  {
     return sycl::inclusive_scan_over_group(idx.get_group(), my_element,
                                            native_operation_t<BinaryOp>{});
   } else {
@@ -173,7 +173,7 @@ T collective_inclusive_group_scan(sycl::nd_item<1> idx, T my_element,
 }
 
 template<class T, class BinaryOp>
-T collective_broadcast(sycl::nd_item<1> idx, T x, int local_id, T* local_mem) {
+T collective_broadcast(const sycl::nd_item<1>& idx, T x, int local_id, T* local_mem) {
   if constexpr(can_use_group_broadcast<T>()) {
     return sycl::group_broadcast(idx.get_group(), x, local_id);
   } else {
@@ -241,9 +241,36 @@ void iterate_and_inclusive_group_scan(
   
 
   T current_exclusive_prefix;
-  T scan_result [WorkPerItem];
+  // scan results
+  T s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, sa, sb, sc, sd, se, sf;
 
-  for(int invocation = 0; invocation < WorkPerItem; ++invocation) {
+  auto for_each_invocation = [&](auto handler) {
+    handler(s0, 0);
+    handler(s1, 1);
+    handler(s2, 2);
+    handler(s3, 3);
+    handler(s4, 4);
+    handler(s5, 5);
+    handler(s6, 6);
+    handler(s7, 7);
+    handler(s8, 8);
+    handler(s9, 9);
+    handler(sa, 10);
+    handler(sb, 11);
+    handler(sc, 12);
+    handler(sd, 13);
+    handler(se, 14);
+    handler(sf, 15);
+  };
+
+  auto sg = idx.get_sub_group();
+  for(int i = 0; i < WorkPerItem; ++i){
+    int current_id = i * group_size + lid;
+    T elem =  gen(idx, i, current_id);
+
+  }
+
+  for_each_invocation([&](T& scan_result, int invocation){
     int current_id = invocation * group_size + lid;
     T my_element = gen(idx, invocation, current_id);
     T local_scan_result =
@@ -255,19 +282,20 @@ void iterate_and_inclusive_group_scan(
     current_exclusive_prefix = collective_broadcast<T, BinaryOp>(
         idx, local_scan_result, group_size - 1, local_mem);
     
-    scan_result[invocation] = local_scan_result;
-  }
+    scan_result = local_scan_result;
+  });
+
   // has local prefix here, this also does lookback
   T global_prefix = local_prefix_to_global_prefix(lid, current_exclusive_prefix);
 
   if(global_group_id != 0) {
-    for(int i = 0; i < WorkPerItem; ++i) {
-      scan_result[i] =  op(global_prefix, scan_result[i]);
-    }  
+    for_each_invocation([&](T& scan_result, int i){
+      scan_result =  op(global_prefix, scan_result);
+    });
   }
-  for(int i = 0; i < WorkPerItem; ++i) {
-    result_processor(i, i*group_size+lid, scan_result[i]);
-  }
+  for_each_invocation([&](T& scan_result, int i){
+    result_processor(i, i*group_size+lid, scan_result);
+  });
 }
 
 template <class T, class BinaryOp>
