@@ -151,11 +151,6 @@ void backend_loader::query_backends() {
       continue;
     }
 
-#ifdef _WIN32
-    HIPSYCL_DEBUG_INFO << "Add " << (backend_lib_path / "llvm-to-backend").string() << " to dll search path\n";
-    auto DllDirCookie = AddDllDirectory((backend_lib_path / "llvm-to-backend").c_str());
-#endif
-
     HIPSYCL_DEBUG_INFO << "backend_loader: Searching path for backend libs: '"
                       << backend_lib_path << "'" << std::endl;
 
@@ -180,9 +175,6 @@ void backend_loader::query_backends() {
         }
       }
     }
-#ifdef _WIN32
-    RemoveDllDirectory(DllDirCookie);
-#endif
   }
 }
 
