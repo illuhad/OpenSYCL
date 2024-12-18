@@ -29,7 +29,7 @@
 #include <functional>
 #include "AddressSpaceMap.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
 namespace llvm {
@@ -56,34 +56,14 @@ public:
 
   virtual ~LLVMToBackendTranslator() {}
 
-  // Do not use inside llvm-to-backend infrastructure targets to avoid
-  // requiring RTTI-enabled LLVM
-  template<auto& ConstantName, class T>
-  void setS2IRConstant(const T& value) {
-    static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>,
-                  "Unsupported type for S2 IR constant");
-
-#ifdef _MSC_VER // Windows - not MINGW!
-    std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).raw_name();
-    name = name.substr(sizeof(".?AU?$")); // this seems to be prepended here, but not in the actual variable name.
-    replaceInvalidCharsInSymbolName(name);
-#else
-    std::string name = typeid(__acpp_sscp_s2_ir_constant<ConstantName, T>).name();
-#endif
-    setS2IRConstant<T>(name, value);
-  }
-
-  template<class T>
-  void setS2IRConstant(const std::string& name, T value) {
-    setS2IRConstant(name, static_cast<const void*>(&value));
-  }
-
-  void setS2IRConstant(const std::string& name, const void* ValueBuffer);
+  void setNoAliasKernelParam(const std::string& KernelName, int ParamIndex);
   void specializeKernelArgument(const std::string &KernelName, int ParamIndex,
                                 const void *ValueBuffer);
   void specializeFunctionCalls(const std::string &FuncName,
                              const std::vector<std::string> &ReplacementCalls,
                              bool OverrideOnlyUndefined=true);
+
+  void setKnownPtrParamAlignment(const std::string &FunctionName, int ParamIndex, int Alignment);
 
   bool setBuildFlag(const std::string &Flag);
   bool setBuildOption(const std::string &Option, const std::string &Value);
@@ -94,6 +74,8 @@ public:
     return setBuildOption(Option, std::to_string(Value));
   }
 
+  void setReflectionField(const std::string& name, uint64_t value);
+
   // Does partial transformation to backend-flavored LLVM IR
   bool partialTransformation(const std::string& LLVMIR, std::string& out);
 
@@ -101,7 +83,6 @@ public:
   bool fullTransformation(const std::string& LLVMIR, std::string& out);
   bool prepareIR(llvm::Module& M);
   bool translatePreparedIR(llvm::Module& FlavoredModule, std::string& out);
-
 
   const std::vector<std::string>& getErrorLog() const {
     return Errors;
@@ -241,6 +222,8 @@ private:
   void runKernelDeadArgumentElimination(llvm::Module &M, llvm::Function *F, PassHandler &PH,
                                         std::vector<int>& RetainedIndicesOut);
 
+  std::string getCompilationIdentifier() const;
+
   int S2IRConstantBackendId;
   
   std::vector<std::string> OutliningEntrypoints;
@@ -259,6 +242,11 @@ private:
   std::string ErroringCode;
 
   std::vector<std::pair<std::string, std::vector<int>*>> FunctionsForDeadArgumentElimination;
+  std::unordered_map<std::string, std::vector<int>> NoAliasParameters;
+
+  // map from kernel name to list of (param index, alignment)
+  std::unordered_map<std::string, std::vector<std::pair<int, int>>> KnownPtrParamAlignments;
+  std::unordered_map<std::string, uint64_t> ReflectionFields;
 
 };
 

@@ -14,6 +14,7 @@
 #include <vector>
 #include <fstream>
 #include <cstdlib>
+#include <chrono>
 #include "bruteforce_nbody.hpp"
 #include "model.hpp"
 
@@ -21,7 +22,7 @@
 arithmetic_type mirror_position(const arithmetic_type mirror_pos,
                                 const arithmetic_type position)
 {
-  arithmetic_type delta = cl::sycl::fabs(mirror_pos - position);
+  arithmetic_type delta = sycl::fabs(mirror_pos - position);
   return (position <= mirror_pos) ?
         mirror_pos + delta : mirror_pos - delta;
 }
@@ -30,15 +31,10 @@ int get_num_iterations_per_output_step()
 {
   char* val = std::getenv("NBODY_ITERATIONS_PER_OUTPUT");
   if(!val)
-    return 1;
+    return 10;
   return std::stoi(val);
 }
 
-template<class T, int Dim>
-using local_accessor =
-  sycl::accessor<T,Dim,
-                 sycl::access::mode::read_write,
-                 sycl::access::target::local>;
 
 int main()
 {
@@ -102,16 +98,15 @@ int main()
                    velocities_cloud2.begin(),
                    velocities_cloud2.end());
 
-  auto particles_buffer =
-      sycl::buffer<particle_type, 1>{particles.data(), particles.size()};
-  auto velocities_buffer =
-      sycl::buffer<vector_type, 1>{velocities.data(), velocities.size()};
-  auto forces_buffer =
-      sycl::buffer<vector_type, 1>{sycl::range<1>{particles.size()}};
+  sycl::queue q{sycl::default_selector_v, sycl::property::queue::in_order{}};
+  
+  particle_type* particles_buffer = sycl::malloc_device<particle_type>(particles.size(), q);
+  vector_type* velocities_buffer = sycl::malloc_device<vector_type>(velocities.size(), q);
+  vector_type* forces_buffer = sycl::malloc_device<vector_type>(particles.size(), q);
 
-  sycl::default_selector selector;
-  sycl::queue q{selector};
-
+  q.copy(particles.data(), particles_buffer, particles.size());
+  q.copy(velocities.data(), velocities_buffer, particles.size());
+  
   auto execution_range = sycl::nd_range<1>{
       sycl::range<1>{((num_particles + local_size - 1) / local_size) * local_size},
       sycl::range<1>{local_size}
@@ -119,44 +114,51 @@ int main()
 
 
   std::ofstream outputfile{"output.txt"};
+
+  const std::size_t num_particles = particles.size();
+
+  auto start_time = std::chrono::high_resolution_clock::now();
+  double total_time = 0.0;
+
   for(std::size_t t = 0; t < num_timesteps; ++t)
   {
     // Submit force calculation
     q.submit([&](sycl::handler& cgh){
-      auto particles_access =
-          particles_buffer.get_access<sycl::access::mode::read>(cgh);
-      auto forces_access =
-          forces_buffer.get_access<sycl::access::mode::discard_write>(cgh);
 
-      auto scratch = local_accessor<particle_type, 1>{
+      auto scratch = sycl::local_accessor<particle_type, 1>{
         sycl::range<1>{local_size},
         cgh
       };
 
-      cgh.parallel_for<class force_calculation_kernel>(execution_range,
-                                                       [=](sycl::nd_item<1> tid){
-        const size_t global_id = tid.get_global_id().get(0);
-        const size_t local_id = tid.get_local_id().get(0);
-        const size_t num_particles = particles_access.get_range()[0];
+      cgh.parallel_for(execution_range,
+                      [=](sycl::nd_item<1> tid){
+        const std::size_t global_id = tid.get_global_id().get(0);
+        const std::size_t local_id = tid.get_local_id().get(0);
+        
         vector_type force{0.0f};
 
         const particle_type my_particle =
-            (global_id < num_particles) ? particles_access[global_id] : particle_type{0.0f};
+            (global_id < num_particles) ? particles_buffer[global_id] : particle_type{0.0f};
 
         for(size_t offset = 0; offset < num_particles; offset += local_size)
         {
           if(offset + local_id < num_particles)
-            scratch[local_id] = particles_access[offset + local_id];
+            scratch[local_id] = particles_buffer[offset + local_id];
           else
             scratch[local_id] = particle_type{0.0f};
-          tid.barrier();
+
+          sycl::group_barrier(tid.get_group());
 
           for(int i = 0; i < local_size; ++i)
           {
             const particle_type p = scratch[i];
             const vector_type p_direction = p.swizzle<0,1,2>();
+            // 3 flops
             const vector_type R = p_direction - my_particle.swizzle<0,1,2>();
-            // dot is not yet implemented
+            
+            // 6 flops (ignoring rsqrt, where we cannot quantify - this
+            //   will be a major source of the reported number being off
+            //   from peak)
             const arithmetic_type r_inv =
                 sycl::rsqrt(R.x()*R.x() + R.y()*R.y() + R.z()*R.z()
                                     + gravitational_softening);
@@ -164,99 +166,113 @@ int main()
             // Actually we just calculate the acceleration, not the
             // force. We only need the acceleration anyway.
             if(global_id != offset + i)
+              // 9 flops
               force += static_cast<arithmetic_type>(p.w()) * r_inv * r_inv * r_inv * R;
           }
 
-          tid.barrier();
+          sycl::group_barrier(tid.get_group());
         }
 
         if(global_id < num_particles)
-          forces_access[global_id] = force;
+          forces_buffer[global_id] = force;
       });
     });
 
     // Time integration
-    q.submit([&](cl::sycl::handler& cgh){
-      auto particles_access =
-          particles_buffer.get_access<sycl::access::mode::read_write>(cgh);
-      auto velocities_access =
-          velocities_buffer.get_access<sycl::access::mode::read_write>(cgh);
-      auto forces_access =
-          forces_buffer.get_access<sycl::access::mode::read>(cgh);
-      const arithmetic_type dt = ::dt;
+    q.parallel_for(execution_range,
+                   [=](sycl::nd_item<1> tid){
+      const size_t global_id = tid.get_global_id().get(0);
 
-      cgh.parallel_for<class integration_kernel>(execution_range,
-                                                [=](sycl::nd_item<1> tid){
-        const size_t global_id = tid.get_global_id().get(0);
-        const size_t num_particles = particles_access.get_range().get(0);
+      if(global_id < num_particles)
+      {
+        particle_type p = particles_buffer[global_id];
+        vector_type v = velocities_buffer[global_id];
+        const vector_type acceleration = forces_buffer[global_id];
 
-        if(global_id < num_particles)
+        // Bring v to the current state
+        v += acceleration * dt;
+
+        // Update position
+        p.x() += v.x() * dt;
+        p.y() += v.y() * dt;
+        p.z() += v.z() * dt;
+
+        // Reflect particle position and invert velocities
+        // if particles exit the simulation cube
+        if(static_cast<arithmetic_type>(p.x()) <= -half_cube_size)
         {
-          particle_type p = particles_access[global_id];
-          vector_type v = velocities_access[global_id];
-          const vector_type acceleration = forces_access[global_id];
-
-          // Bring v to the current state
-          v += acceleration * dt;
-
-          // Update position
-          p.x() += v.x() * dt;
-          p.y() += v.y() * dt;
-          p.z() += v.z() * dt;
-
-          // Reflect particle position and invert velocities
-          // if particles exit the simulation cube
-          if(static_cast<arithmetic_type>(p.x()) <= -half_cube_size)
-          {
-            v.x() = cl::sycl::fabs(v.x());
-            p.x() = mirror_position(-half_cube_size, p.x());
-          }
-          else if(static_cast<arithmetic_type>(p.x()) >= half_cube_size)
-          {
-            v.x() = -cl::sycl::fabs(v.x());
-            p.x() = mirror_position(half_cube_size, p.x());
-          }
-
-          if(static_cast<arithmetic_type>(p.y()) <= -half_cube_size)
-          {
-            v.y() = cl::sycl::fabs(v.y());
-            p.y() = mirror_position(-half_cube_size, p.y());
-          }
-          else if(static_cast<arithmetic_type>(p.y()) >= half_cube_size)
-          {
-            v.y() = -cl::sycl::fabs(v.y());
-            p.y() = mirror_position(half_cube_size, p.y());
-          }
-
-          if(static_cast<arithmetic_type>(p.z()) <= -half_cube_size)
-          {
-            v.z() = cl::sycl::fabs(v.z());
-            p.z() = mirror_position(-half_cube_size, p.z());
-          }
-          else if(static_cast<arithmetic_type>(p.z()) >= half_cube_size)
-          {
-            v.z() = -cl::sycl::fabs(v.z());
-            p.z() = mirror_position(half_cube_size, p.z());
-          }
-
-          particles_access[global_id] = p;
-          velocities_access[global_id] = v;
+          v.x() = sycl::fabs(v.x());
+          p.x() = mirror_position(-half_cube_size, p.x());
         }
-      });
+        else if(static_cast<arithmetic_type>(p.x()) >= half_cube_size)
+        {
+          v.x() = -sycl::fabs(v.x());
+          p.x() = mirror_position(half_cube_size, p.x());
+        }
+
+        if(static_cast<arithmetic_type>(p.y()) <= -half_cube_size)
+        {
+          v.y() = sycl::fabs(v.y());
+          p.y() = mirror_position(-half_cube_size, p.y());
+        }
+        else if(static_cast<arithmetic_type>(p.y()) >= half_cube_size)
+        {
+          v.y() = -sycl::fabs(v.y());
+          p.y() = mirror_position(half_cube_size, p.y());
+        }
+
+        if(static_cast<arithmetic_type>(p.z()) <= -half_cube_size)
+        {
+          v.z() = sycl::fabs(v.z());
+          p.z() = mirror_position(-half_cube_size, p.z());
+        }
+        else if(static_cast<arithmetic_type>(p.z()) >= half_cube_size)
+        {
+          v.z() = -sycl::fabs(v.z());
+          p.z() = mirror_position(half_cube_size, p.z());
+        }
+
+        particles_buffer[global_id] = p;
+        velocities_buffer[global_id] = v;
+      }
     });
+  
 
     if(t % iterations_per_output == 0)
     {
-      std::cout << "Writing output..."  << std::endl;
-      auto particle_positions =
-          particles_buffer.get_access<sycl::access::mode::read>();
+      // This wait is only needed for the performance measurement.
+      // We don't need it for the algorithm itself - but we don't want
+      // to include the data transfer time in the measurement.
+      q.wait();
+      auto stop_time = std::chrono::high_resolution_clock::now();
+      total_time +=
+          std::chrono::duration_cast<std::chrono::nanoseconds>(stop_time - start_time)
+              .count() *
+          1.e-9;
+      
+      const std::size_t flops_per_iter =
+          18 * num_particles * num_particles + 12 * num_particles;
+      std::cout << "Overall average performance: "
+                << 1.e-9 * flops_per_iter * (t + 1) / total_time << " GFlops"
+                << std::endl;
 
+      q.copy(particles_buffer, particles.data(), particles.size()).wait();
+
+      std::cout << "Writing output..."  << std::endl;
       for(std::size_t i = 0; i < num_particles; ++i)
       {
-        outputfile << particle_positions[i].x() << " "
-                   << particle_positions[i].y() << " "
-                   << particle_positions[i].z() << " " << i << std::endl;
+        outputfile << particles[i].x() << " "
+                   << particles[i].y() << " "
+                   << particles[i].z() << " " << i << std::endl;
       }
+
+      // start again for next iteration
+      start_time = std::chrono::high_resolution_clock::now();
     }
   }
+
+  q.wait();
+  sycl::free(particles_buffer, q);
+  sycl::free(velocities_buffer, q);
+  sycl::free(forces_buffer, q);
 }

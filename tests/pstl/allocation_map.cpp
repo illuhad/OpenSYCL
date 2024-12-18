@@ -24,7 +24,8 @@
 
 BOOST_AUTO_TEST_SUITE(pstl_allocation_map)
 
-using amap_t = hipsycl::stdpar::allocation_map<>;
+struct payload{};
+using amap_t = hipsycl::common::allocation_map<payload>;
 
 template<class F>
 void for_each_test_allocation(std::size_t n, F&& f) {

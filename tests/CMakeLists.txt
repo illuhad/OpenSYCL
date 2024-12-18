@@ -134,12 +134,14 @@ if(WITH_PSTL_TESTS)
     pstl/copy.cpp
     pstl/copy_if.cpp
     pstl/copy_n.cpp
+    pstl/exclusive_scan.cpp
     pstl/fill.cpp
     pstl/fill_n.cpp
     pstl/for_each.cpp
     pstl/for_each_n.cpp
     pstl/generate.cpp
     pstl/generate_n.cpp
+    pstl/inclusive_scan.cpp
     pstl/memory.cpp
     pstl/merge.cpp
     pstl/none_of.cpp
@@ -151,6 +153,8 @@ if(WITH_PSTL_TESTS)
     pstl/sort.cpp
     pstl/transform.cpp
     pstl/transform_reduce.cpp
+    pstl/transform_inclusive_scan.cpp
+    pstl/transform_exclusive_scan.cpp
     pstl/pointer_validation.cpp
     pstl/allocation_map.cpp
     pstl/free_space_map.cpp)

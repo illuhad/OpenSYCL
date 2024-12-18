@@ -17,7 +17,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
-#include <math.h>
+#include <cmath>
 #include <type_traits>
 
 #include <sstream>

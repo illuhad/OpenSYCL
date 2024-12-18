@@ -13,6 +13,8 @@
 #include "hipSYCL/sycl/libkernel/sscp/builtins/ptx/libdevice.hpp"
 
 
+extern "C" int __acpp_sscp_jit_reflect_target_arch();
+
 // Atomic definitions adapted from __clang_cuda_device_functions.h
 
 double __dAtomicAdd(double *__p, double __v) {
@@ -419,8 +421,6 @@ unsigned long long __ullAtomicXor_system(unsigned long long *__p,
 
 
 
-
-
 // ********************** atomic store ***************************
 
 // Unlike the CUDA compilation flow, the __atomic_store and __atomic_load builtin
@@ -438,42 +438,63 @@ void mem_fence(__acpp_sscp_memory_scope fence_scope) {
   }
 }
 
+
+template<class T>
+T memfenced_load(T* ptr, __acpp_sscp_memory_scope scope) {
+  mem_fence(scope);
+  T x = *ptr;
+  mem_fence(scope);
+  return x;
+}
+
+template<class T>
+void memfenced_store(T* ptr, T x, __acpp_sscp_memory_scope scope) {
+  mem_fence(scope);
+  *ptr = x;
+  mem_fence(scope);
+}
+
 HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i8(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int8 *ptr, __acpp_int8 x) {
-  *ptr = x;
-  mem_fence(scope);
+  memfenced_store(ptr, x, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i16(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int16 *ptr, __acpp_int16 x) {
-  *ptr = x;
-  mem_fence(scope);
+  memfenced_store(ptr, x, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i32(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int32 *ptr, __acpp_int32 x) {
-  if(scope == __acpp_sscp_memory_scope::system) {
-    if(order == __acpp_sscp_memory_order::release) {
-      asm volatile("st.release.sys.s32 [%0], %1;"
-                   :
-                   :"l"(ptr), "r"(x)
-                   : "memory");
-      return;
+  if(__acpp_sscp_jit_reflect_target_arch() >= 70) {
+    if(scope == __acpp_sscp_memory_scope::system) {
+      if(order == __acpp_sscp_memory_order::release) {
+        asm volatile("st.release.sys.s32 [%0], %1;"
+                    :
+                    :"l"(ptr), "r"(x)
+                    : "memory");
+        return;
+      }
+    } else if(scope == __acpp_sscp_memory_scope::device) {
+      if(order == __acpp_sscp_memory_order::release) {
+        asm volatile("st.release.gpu.s32 [%0], %1;"
+                    :
+                    :"l"(ptr), "r"(x)
+                    : "memory");
+        return;
+      }
     }
   }
-
-  *ptr = x;
-  mem_fence(scope);
+  memfenced_store(ptr, x, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i64(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int64 *ptr, __acpp_int64 x) {
-  *ptr = x;
-  mem_fence(scope);
+  memfenced_store(ptr, x, scope);
 }
 
 
@@ -482,36 +503,47 @@ HIPSYCL_SSCP_BUILTIN void __acpp_sscp_atomic_store_i64(
 HIPSYCL_SSCP_BUILTIN __acpp_int8 __acpp_sscp_atomic_load_i8(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int8 *ptr) {
-  return *ptr;
+  return memfenced_load(ptr, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int16 __acpp_sscp_atomic_load_i16(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int16 *ptr) {
-  return *ptr;
+  return memfenced_load(ptr, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_atomic_load_i32(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int32 *ptr) {
-  if(scope == __acpp_sscp_memory_scope::system) {
-    if(order == __acpp_sscp_memory_order::acquire) {
-      __acpp_int32 result;
-      asm volatile("ld.acquire.sys.u32 %0,[%1];"
-                   : "=r"(result)
-                   : "l"(ptr)
-                   : "memory");
-      return result;
+
+  if(__acpp_sscp_jit_reflect_target_arch() >= 70) {
+    if(scope == __acpp_sscp_memory_scope::system) {
+      if(order == __acpp_sscp_memory_order::acquire) {
+        __acpp_int32 result;
+        asm volatile("ld.acquire.sys.u32 %0,[%1];"
+                    : "=r"(result)
+                    : "l"(ptr)
+                    : "memory");
+        return result;
+      }
+    } else if(scope == __acpp_sscp_memory_scope::device) {
+      if(order == __acpp_sscp_memory_order::acquire) {
+        __acpp_int32 result;
+        asm volatile("ld.acquire.gpu.u32 %0,[%1];"
+                    : "=r"(result)
+                    : "l"(ptr)
+                    : "memory");
+        return result;
+      } 
     }
   }
-
-  return *ptr;
+  return memfenced_load(ptr, scope);
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_int64 __acpp_sscp_atomic_load_i64(
     __acpp_sscp_address_space as, __acpp_sscp_memory_order order,
     __acpp_sscp_memory_scope scope, __acpp_int64 *ptr) {
-  return *ptr;
+  return memfenced_load(ptr, scope);
 }
 
 // for internal use only, not part of the public API

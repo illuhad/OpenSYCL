@@ -19,6 +19,7 @@
 
 #include "hipSYCL/common/spin_lock.hpp"
 #include "hipSYCL/glue/llvm-sscp/jit.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/reflection_map.hpp"
 #include "hipSYCL/runtime/event.hpp"
 #include "hipSYCL/runtime/generic/async_worker.hpp"
 #include "hipSYCL/runtime/ocl/ocl_code_object.hpp"
@@ -107,6 +108,7 @@ private:
   common::spin_lock _sscp_submission_spin_lock;
   glue::jit::cxx_argument_mapper _arg_mapper;
   kernel_configuration _config;
+  glue::jit::reflection_map _reflection_map;
 };
 
 }

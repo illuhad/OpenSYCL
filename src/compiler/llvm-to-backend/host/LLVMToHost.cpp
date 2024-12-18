@@ -18,7 +18,7 @@
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceMap.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/host/HostKernelWrapperPass.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/runtime/dylib_loader.hpp"
 
 #include <llvm/ADT/SmallVector.h>
@@ -56,7 +56,8 @@ namespace hipsycl {
 namespace compiler {
 
 LLVMToHostTranslator::LLVMToHostTranslator(const std::vector<std::string> &KN)
-    : LLVMToBackendTranslator{sycl::jit::backend::host, KN, KN}, KernelNames{KN} {}
+    : LLVMToBackendTranslator{static_cast<int>(sycl::AdaptiveCpp_jit::compiler_backend::host), KN, KN},
+      KernelNames{KN} {}
 
 bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
 

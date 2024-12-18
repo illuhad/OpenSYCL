@@ -67,7 +67,7 @@ void bitonic_group_sort(RandomIt first, SizeT group_size, SizeT problem_size,
 
 template <class RandomIt, class Comparator>
 sycl::event bitonic_sort(sycl::queue &q, RandomIt first, RandomIt last,
-                         Comparator comp) {
+                         Comparator comp, const std::vector<sycl::event>& deps = {}) {
 
   std::size_t problem_size = std::distance(first, last);
   sycl::event most_recent_event;
@@ -88,7 +88,7 @@ sycl::event bitonic_sort(sycl::queue &q, RandomIt first, RandomIt last,
       }
     };
     if(is_first_kernel || q.is_in_order())
-      most_recent_event = q.parallel_for(problem_size, k);
+      most_recent_event = q.parallel_for(problem_size, deps, k);
     else
       most_recent_event = q.parallel_for(problem_size, most_recent_event, k);
     is_first_kernel = false;

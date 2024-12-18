@@ -1,7 +1,0 @@
-[hipSYCL-repository]
-name=hipSYCL repository
-baseurl=http://repo.urz.uni-heidelberg.de/sycl{}/rpm/centos7/
-gpgcheck=1
-gpgkey=http://repo.urz.uni-heidelberg.de/sycl/hipsycl.asc
-enabled=1
-

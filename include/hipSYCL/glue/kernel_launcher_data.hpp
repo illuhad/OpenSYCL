@@ -31,6 +31,7 @@ class dag_node;
 class kernel_configuration;
 class backend_kernel_launch_capabilities;
 class hcf_kernel_info;
+class kernel_operation;
 }
 
 namespace glue {
@@ -53,7 +54,7 @@ struct kernel_launcher_data {
   rt::range<3> group_size; // <- indices must be flipped
   unsigned local_mem_size;
   // In case the launch is a custom operation
-  std::function<void(sycl::interop_handle&)> custom_op;
+  std::function<void(rt::kernel_operation*, sycl::interop_handle&)> custom_op;
 
   using invoker_function_t = rt::result (*)(
       const kernel_launcher_data &launch_config, rt::dag_node *node,

@@ -23,6 +23,8 @@ set(HIPSYCL_RT_EXTRA_LINKER_FLAGS ${HIPSYCL_RT_EXTRA_LINKER_FLAGS} ${HIPSYCL_STD
 set(CMAKE_INSTALL_RPATH ${base} ${base}/hipSYCL)
 
 add_library(acpp-rt SHARED
+  allocator.cpp
+  allocation_tracker.cpp
   application.cpp
   runtime.cpp
   error.cpp
@@ -36,6 +38,7 @@ add_library(acpp-rt SHARED
   kernel_cache.cpp
   kernel_configuration.cpp
   multi_queue_executor.cpp
+  runtime_event_handlers.cpp
   dag.cpp
   dag_node.cpp
   dag_builder.cpp

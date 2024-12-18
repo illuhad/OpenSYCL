@@ -108,7 +108,14 @@ inline int select_default(const device& dev) {
   } else if(dev.is_cpu()) {
     // Prefer CPU over GPUs that don't have compiled kernels
     // and cannot run kernels.
-    return 1;
+
+    // Prefer non-OpenMP CPU device since the OpenMP backend cannot be disabled,
+    // so there would be no way to select e.g. an OpenCL CPU device
+    // using ACPP_VISIBILITY_MASK otherwise.
+    if(dev.get_backend() != sycl::backend::omp)
+      return 1;
+    else
+      return 0;
   } else {
     // Never select GPUs without compiled kernels
     return -1;

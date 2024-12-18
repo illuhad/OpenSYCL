@@ -21,9 +21,12 @@
 #include "hipSYCL/sycl/libkernel/functional.hpp"
 #include "hipSYCL/sycl/event.hpp"
 #include "hipSYCL/sycl/queue.hpp"
+#include "hipSYCL/sycl/detail/namespace_compat.hpp"
 #include "hipSYCL/algorithms/reduction/reduction_descriptor.hpp"
 #include "hipSYCL/algorithms/reduction/reduction_engine.hpp"
+#include "hipSYCL/algorithms/scan/scan.hpp"
 #include "hipSYCL/algorithms/util/memory_streaming.hpp"
+
 
 namespace hipsycl::algorithms {
 
@@ -67,7 +70,8 @@ sycl::event wg_model_reduction(sycl::queue &q,
                                util::allocation_group &scratch_allocations,
                                T *output, T init, std::size_t target_num_groups,
                                std::size_t local_size, std::size_t problem_size,
-                               Kernel k, BinaryReductionOp op) {
+                               Kernel k, BinaryReductionOp op,
+                               const std::vector<sycl::event>& deps = {}) {
   assert(target_num_groups > 0);
 
   sycl::event last_event;
@@ -119,6 +123,7 @@ sycl::event wg_model_reduction(sycl::queue &q,
 
   last_event = q.submit([&](sycl::handler &cgh) {
     sycl::local_accessor<char> acc{sycl::range<1>{main_kernel_local_mem}, cgh};
+    cgh.depends_on(deps);
     cgh.parallel_for(sycl::nd_range<1>{dispatched_global_size, local_size},
                     main_kernel);
   });
@@ -133,60 +138,25 @@ template <class T, class Kernel, class BinaryReductionOp>
 sycl::event
 wg_model_reduction(sycl::queue &q, util::allocation_group &scratch_allocations,
                    T *output, T init, std::size_t target_num_groups,
-                   std::size_t problem_size, Kernel k, BinaryReductionOp op) {
+                   std::size_t problem_size, Kernel k, BinaryReductionOp op,
+                   const std::vector<sycl::event>& deps = {}) {
   return wg_model_reduction(q, scratch_allocations, output, init,
-                                  target_num_groups, 128, problem_size, k, op);
+                                  target_num_groups, 128, problem_size, k, op, deps);
 }
 
-template <class T, class Kernel, class BinaryReductionOp>
-sycl::event threading_model_reduction(sycl::queue &q,
-                                  util::allocation_group &scratch_allocations,
-                                  T *output, T init, std::size_t n, Kernel k,
-                                  BinaryReductionOp op) {
-
-  sycl::event last_event;
-  auto single_task_launcher =
-      [&](auto kernel) {
-        last_event = q.single_task(kernel);
-      };
-
-  auto operator_config = get_reduction_operator_configuration<T>(op);
-  auto reduction_descriptor = reduction::reduction_descriptor{
-      operator_config, init, output};
-  
-  reduction::threading_model::omp_thread_info_query thread_info_query;
-  reduction::threading_reduction_engine engine{thread_info_query,
-                                               &scratch_allocations};
-  auto plan = engine.create_plan(n, reduction_descriptor);
-  auto main_kernel = engine.make_main_reducing_kernel(k, plan);
-  
-  last_event = q.submit([&](sycl::handler &cgh) {
-    cgh.parallel_for(sycl::range<1>{n},
-                     main_kernel);
-  });
-
-  engine.run_additional_kernels(single_task_launcher, plan);
-  
-  return last_event;
-}
 
 template <class T, class Kernel, class BinaryReductionOp>
 sycl::event transform_reduce_impl(sycl::queue &q,
                                   util::allocation_group &scratch_allocations,
                                   T *output, T init, std::size_t n, Kernel k,
-                                  BinaryReductionOp op) {
-  if(q.get_device().is_host()) {
-#ifdef HIPSYCL_ALGORITHMS_TRANSFORM_REDUCE_HOST_THREADING_MODEL
-    return threading_model_reduction(q, scratch_allocations, output, init, n, k,
-                                     op);
-#endif
-  }
+                                  BinaryReductionOp op,
+                                  const std::vector<sycl::event>& deps) {
   sycl::device dev = q.get_device();
   std::size_t num_groups =
       dev.get_info<sycl::info::device::max_compute_units>() * 4;
 
   return wg_model_reduction(q, scratch_allocations, output, init, num_groups,
-                            n, k, op);
+                            n, k, op, deps);
 
 }
 
@@ -203,7 +173,8 @@ sycl::event
 transform_reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
                  ForwardIt1 first1, ForwardIt1 last1, ForwardIt2 first2, T *out,
                  T init, BinaryReductionOp reduce,
-                 BinaryTransformOp transform) {
+                 BinaryTransformOp transform,
+                 const std::vector<sycl::event>& deps = {}) {
   if(first1 == last1)
     return sycl::event{};
   
@@ -217,7 +188,7 @@ transform_reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
   };
 
   return detail::transform_reduce_impl(q, scratch_allocations, out, init, n,
-                                       kernel, reduce);
+                                       kernel, reduce, deps);
 }
 
 template <class ForwardIt, class T, class BinaryReductionOp,
@@ -225,7 +196,8 @@ template <class ForwardIt, class T, class BinaryReductionOp,
 sycl::event
 transform_reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
                  ForwardIt first, ForwardIt last, T* out, T init,
-                 BinaryReductionOp reduce, UnaryTransformOp transform) {
+                 BinaryReductionOp reduce, UnaryTransformOp transform,
+                 const std::vector<sycl::event>& deps = {}) {
   if(first == last)
     return sycl::event{};
   
@@ -237,41 +209,124 @@ transform_reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
   };
 
   return detail::transform_reduce_impl(q, scratch_allocations, out, init, n,
-                                       kernel, reduce);
+                                       kernel, reduce, deps);
 }
 
 template <class ForwardIt1, class ForwardIt2, class T>
 sycl::event transform_reduce(sycl::queue &q,
                              util::allocation_group &scratch_allocations,
                              ForwardIt1 first1, ForwardIt1 last1,
-                             ForwardIt2 first2, T *out, T init) {
+                             ForwardIt2 first2, T *out, T init,
+                             const std::vector<sycl::event>& deps = {}) {
   return transform_reduce(q, scratch_allocations, first1, last1, first2, out,
-                          init, std::plus<T>{}, std::multiplies<T>{});
+                          init, std::plus<T>{}, std::multiplies<T>{}, deps);
 }
 
 
 template <class ForwardIt, class T, class BinaryOp>
 sycl::event reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
                    ForwardIt first, ForwardIt last, T *out, T init,
-                   BinaryOp binary_op) {
+                   BinaryOp binary_op,
+                   const std::vector<sycl::event>& deps = {}) {
   return transform_reduce(q, scratch_allocations, first, last, out, init,
-                          binary_op, [](auto x) { return x; });
+                          binary_op, [](auto x) { return x; }, deps);
 }
 
 template <class ForwardIt, class T>
 sycl::event reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
-                   ForwardIt first, ForwardIt last, T *out, T init) {
-  return reduce(q, scratch_allocations, first, last, out, init, std::plus<T>{});
+                   ForwardIt first, ForwardIt last, T *out, T init,
+                   const std::vector<sycl::event>& deps = {}) {
+  return reduce(q, scratch_allocations, first, last, out, init, std::plus<T>{}, deps);
 }
 
 template <class ForwardIt>
 sycl::event reduce(sycl::queue &q, util::allocation_group &scratch_allocations,
                    ForwardIt first, ForwardIt last,
-                   typename std::iterator_traits<ForwardIt>::value_type *out) {
+                   typename std::iterator_traits<ForwardIt>::value_type *out,
+                   const std::vector<sycl::event>& deps = {}) {
   return reduce(q, scratch_allocations, first, last, out,
-                typename std::iterator_traits<ForwardIt>::value_type{});
+                typename std::iterator_traits<ForwardIt>::value_type{}, deps);
 }
 
+///////////////////////////// scans /////////////////////////////////////
+
+template <class InputIt, class OutputIt, class BinaryOp>
+sycl::event
+inclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op,
+               const std::vector<sycl::event> &deps = {}) {
+
+  return scanning::scan<true>(q, scratch_allocations, first, last, d_first, op,
+                              std::nullopt, deps);
 }
+
+template <class InputIt, class OutputIt, class BinaryOp, class T>
+sycl::event
+inclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, BinaryOp op,
+               T init, const std::vector<sycl::event> &deps = {}) {
+  return scanning::scan<true>(q, scratch_allocations, first, last, d_first, op,
+                              init, deps);
+}
+
+template <class InputIt, class OutputIt>
+sycl::event inclusive_scan(sycl::queue &q,
+                           util::allocation_group &scratch_allocations,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           const std::vector<sycl::event> &deps = {}) {
+  return inclusive_scan(q, scratch_allocations, first, last, d_first,
+                        std::plus<>{}, deps);
+}
+
+template <class InputIt, class OutputIt, class T, class BinaryOp>
+sycl::event
+exclusive_scan(sycl::queue &q, util::allocation_group &scratch_allocations,
+               InputIt first, InputIt last, OutputIt d_first, T init,
+               BinaryOp op, const std::vector<sycl::event> &deps = {}) {
+  return scanning::scan<false>(q, scratch_allocations, first, last, d_first, op,
+                               init, deps);
+}
+
+template <class InputIt, class OutputIt, class T>
+sycl::event exclusive_scan(sycl::queue &q,
+                           util::allocation_group &scratch_allocations,
+                           InputIt first, InputIt last, OutputIt d_first,
+                           T init, const std::vector<sycl::event> &deps = {}) {
+  return exclusive_scan(q, scratch_allocations, first, last, d_first, init,
+                        std::plus<>{}, deps);
+}
+
+template <class InputIt, class OutputIt, class BinaryOp, class UnaryOp>
+sycl::event transform_inclusive_scan(
+    sycl::queue &q, util::allocation_group &scratch_allocations, InputIt first,
+    InputIt last, OutputIt d_first, BinaryOp binary_op, UnaryOp unary_op,
+    const std::vector<sycl::event> &deps = {}) {
+  return scanning::transform_scan<true>(q, scratch_allocations, first, last,
+                                        d_first, unary_op, binary_op,
+                                        std::nullopt, deps);
+}
+
+template <class InputIt, class OutputIt, class BinaryOp, class UnaryOp, class T>
+sycl::event transform_inclusive_scan(
+    sycl::queue &q, util::allocation_group &scratch_allocations, InputIt first,
+    InputIt last, OutputIt d_first, BinaryOp binary_op, UnaryOp unary_op,
+    T init, const std::vector<sycl::event> &deps = {}) {
+  return scanning::transform_scan<true>(q, scratch_allocations, first, last,
+                                        d_first, unary_op, binary_op,
+                                        init, deps);
+}
+
+template <class InputIt, class OutputIt, class T, class BinaryOp, class UnaryOp>
+sycl::event transform_exclusive_scan(
+    sycl::queue &q, util::allocation_group &scratch_allocations, InputIt first,
+    InputIt last, OutputIt d_first, T init, BinaryOp binary_op,
+    UnaryOp unary_op, const std::vector<sycl::event> &deps = {}) {
+  return scanning::transform_scan<false>(q, scratch_allocations, first, last,
+                                         d_first, unary_op, binary_op, init,
+                                         deps);
+}
+
+} // algorithms
+
 
 #endif

@@ -17,6 +17,7 @@
 
 #include <type_traits>
 
+
 #if ACPP_LIBKERNEL_IS_DEVICE_PASS_CUDA ||                                   \
     ACPP_LIBKERNEL_IS_DEVICE_PASS_HIP
 
@@ -40,10 +41,62 @@ inline constexpr int builtin_memory_order(memory_order o) noexcept {
   return __ATOMIC_RELAXED;
 }
 
+#if ACPP_LIBKERNEL_IS_DEVICE_PASS_CUDA && !defined(ACPP_LIBKERNEL_CUDA_NVCXX)
+ #define ACPP_NEEDS_CUDA_ATOMIC_WORKAROUNDS
+#endif
+
+#ifdef ACPP_NEEDS_CUDA_ATOMIC_WORKAROUNDS
+// LLVM NVPTX backend does currently not properly support acquire/release
+// atomics. We workaround this for two load/store instructions that we
+// need for the algorithms library using inline assembly.
+__attribute__((always_inline)) 
+HIPSYCL_HIPLIKE_BUILTIN
+void __acpp_cuda_atomic_store_device_rel_i32(int32_t *ptr, int32_t x) {
+#if __CUDA_ARCH__ < 700
+  __threadfence();
+  *ptr = x;
+  __threadfence();
+#else
+  asm volatile("st.release.gpu.s32 [%0], %1;"
+              :
+              :"l"(ptr), "r"(x)
+              : "memory");
+#endif
+}
+
+__attribute__((always_inline))
+HIPSYCL_HIPLIKE_BUILTIN
+int32_t __acpp_cuda_atomic_load_device_acq_i32(int32_t *ptr) {
+#if __CUDA_ARCH__ < 700
+  __threadfence();
+  int32_t res = *ptr;
+  __threadfence();
+  return res;
+#else
+  int32_t result;
+  asm volatile("ld.acquire.gpu.u32 %0,[%1];"
+                : "=r"(result)
+                : "l"(ptr)
+                : "memory");
+  return result;  
+#endif
+}
+
+#endif
+
 template <access::address_space S, class T>
 HIPSYCL_HIPLIKE_BUILTIN void
 __acpp_atomic_store(T *addr, T x, memory_order order,
                        memory_scope scope) noexcept {
+  if constexpr(sizeof(T) == sizeof(int32_t)) {
+#ifdef ACPP_NEEDS_CUDA_ATOMIC_WORKAROUNDS
+    if(scope == memory_scope::device && order == memory_order::release){
+      __acpp_cuda_atomic_store_device_rel_i32(reinterpret_cast<int32_t*>(addr),
+                                              bit_cast<int32_t>(x));
+      return;
+    }
+#endif
+  }
   __atomic_store_n(addr, x, builtin_memory_order(order));
 }
 
@@ -66,6 +119,14 @@ __acpp_atomic_store(double *addr, double x, memory_order order,
 template <access::address_space S, class T>
 HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_load(T *addr, memory_order order,
                                                 memory_scope scope) noexcept {
+  if constexpr(sizeof(T) == sizeof(int32_t)) {
+#ifdef ACPP_NEEDS_CUDA_ATOMIC_WORKAROUNDS
+    if(scope == memory_scope::device && order == memory_order::acquire){
+      return bit_cast<T>(__acpp_cuda_atomic_load_device_acq_i32(
+          reinterpret_cast<int32_t*>(addr)));
+    }
+#endif
+  }
   return __atomic_load_n(addr, builtin_memory_order(order));
 }
 
@@ -492,6 +553,8 @@ __acpp_atomic_fetch_max(double *addr, double x, memory_order order,
 }
 }
 }
+
+#undef ACPP_NEEDS_CUDA_ATOMIC_WORKAROUNDS
 
 #endif
 

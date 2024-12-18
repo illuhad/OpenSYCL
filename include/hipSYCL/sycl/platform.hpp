@@ -12,6 +12,7 @@
 #define HIPSYCL_PLATFORM_HPP
 
 #include <vector>
+#include <string>
 
 #include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/backend.hpp"
@@ -21,6 +22,7 @@
 #include "device_selector.hpp"
 #include "info/info.hpp"
 #include "version.hpp"
+
 
 namespace hipsycl {
 namespace sycl {
@@ -32,13 +34,25 @@ class platform {
 public:
   platform() : _platform{detail::get_host_device().get_backend(), 0} {}
   
-  platform(rt::backend_id backend)
-      : _platform{backend, 0} {}
+  platform(rt::platform_id platform)
+  : _platform{platform} {}
+
+  platform(rt::backend_id backend, std::size_t platform_index)
+      : _platform{backend, platform_index} {}
 
   template<class DeviceSelector>
   explicit platform(const DeviceSelector &deviceSelector) {
     auto dev = detail::select_devices(deviceSelector)[0];
-    this->_platform = rt::platform_id{dev._device_id};
+    
+    rt::backend *b =
+        _requires_runtime.get()->backends().get(dev.get_backend());
+    std::size_t platform_index =
+        b->get_hardware_manager()
+            ->get_device(dev.AdaptiveCpp_device_id().get_id())
+            ->get_platform_index();
+
+    this->_platform =
+        rt::platform_id{dev.get_backend(), static_cast<int>(platform_index)};
   }
 
 
@@ -54,12 +68,15 @@ public:
       bool is_gpu = b->get_hardware_manager()->get_device(dev)->is_gpu();
 
       bool include_device = false;
-      if (type == info::device_type::all ||
-          (type == info::device_type::accelerator && is_gpu) ||
-          (type == info::device_type::gpu && is_gpu) ||
-          (type == info::device_type::host && is_cpu) ||
-          (type == info::device_type::cpu && is_cpu)) {
-        include_device = true;
+      if (b->get_hardware_manager()->get_device(dev)->get_platform_index() ==
+          _platform.get_platform()) {
+        if (type == info::device_type::all ||
+            (type == info::device_type::accelerator && is_gpu) ||
+            (type == info::device_type::gpu && is_gpu) ||
+            (type == info::device_type::host && is_cpu) ||
+            (type == info::device_type::cpu && is_cpu)) {
+          include_device = true;
+        }
       }
 
       if (include_device)
@@ -102,7 +119,10 @@ public:
     rt::runtime_keep_alive_token requires_runtime;
 
     requires_runtime.get()->backends().for_each_backend([&](rt::backend *b) {
-      result.push_back(platform{b->get_unique_backend_id()});
+      for (std::size_t i = 0;
+           i < b->get_hardware_manager()->get_num_platforms(); ++i) {
+        result.push_back(platform{b->get_unique_backend_id(), i});
+      }
     });
 
     return result;
@@ -126,7 +146,8 @@ public:
     return AdaptiveCpp_hash_code();
   }
 
-
+  
+  context khr_get_default_context() const;
 private:
   rt::platform_id _platform;
   rt::runtime_keep_alive_token _requires_runtime;
@@ -147,7 +168,11 @@ HIPSYCL_SPECIALIZE_GET_INFO(platform, version)
 HIPSYCL_SPECIALIZE_GET_INFO(platform, name)
 {
   rt::backend_id b = _platform.get_backend();
-  return _requires_runtime.get()->backends().get(b)->get_name();
+  std::string platform_name =
+      _requires_runtime.get()->backends().get(b)->get_name();
+  platform_name +=
+      " (platform " + std::to_string(_platform.get_platform()) + ")";
+      return platform_name;
 }
 
 HIPSYCL_SPECIALIZE_GET_INFO(platform, vendor)
@@ -161,7 +186,8 @@ HIPSYCL_SPECIALIZE_GET_INFO(platform, extensions)
 }
 
 inline platform device::get_platform() const  {
-  return platform{_device_id.get_backend()};
+  return platform{_device_id.get_backend(),
+                  static_cast<int>(get_rt_device()->get_platform_index())};
 }
 
 }// namespace sycl

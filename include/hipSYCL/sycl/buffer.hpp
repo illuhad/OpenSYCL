@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <utility>
+#include <atomic>
 
 #include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/runtime/allocator.hpp"
@@ -189,6 +190,21 @@ struct buffer_impl
   bool writes_back;
   bool destructor_waits;
   bool use_external_storage;
+
+  buffer_impl() {
+    static std::atomic<bool> was_warning_emitted = false;
+    if(!was_warning_emitted) {
+      HIPSYCL_DEBUG_WARNING << "This application uses SYCL buffers; the SYCL "
+	      "buffer-accessor model is well-known to introduce unnecessary "
+	      "overheads. Please consider migrating to the SYCL2020 USM model, "
+	      "in particular device USM (sycl::malloc_device) combined with "
+	      "in-order queues for more performance. See the AdaptiveCpp "
+	      "performance guide for more information: \n"
+	      "https://github.com/AdaptiveCpp/AdaptiveCpp/blob/develop/doc/performance.md"
+	<< std::endl;
+      was_warning_emitted = true;
+    }
+  }
 
   ~buffer_impl() {
     if (writes_back) {
@@ -1194,17 +1210,18 @@ private:
     if(!_impl->data->has_allocation(host_device)){
       if(this->has_property<property::buffer::use_optimized_host_memory>()){
         // TODO: Actually may need to use non-host backend here...
-        host_ptr =
-            rt->backends().get(host_device.get_backend())
-                ->get_allocator(host_device)
-                ->allocate_optimized_host(
-                    alignof(T), _impl->data->get_num_elements().size() * sizeof(T));
+        auto* allocator = rt->backends().get(host_device.get_backend())
+                ->get_allocator(host_device);
+        host_ptr = rt::allocate_host(allocator, alignof(T),
+                                     _impl->data->get_num_elements().size() *
+                                         sizeof(T));
       } else {
-        host_ptr =
-            rt->backends().get(host_device.get_backend())
-                ->get_allocator(host_device)
-                ->allocate(
-                    alignof(T), _impl->data->get_num_elements().size() * sizeof(T));
+        auto *allocator = rt->backends()
+                              .get(host_device.get_backend())
+                              ->get_allocator(host_device);
+        host_ptr = rt::allocate_device(allocator, alignof(T),
+                                       _impl->data->get_num_elements().size() *
+                                           sizeof(T));
       }
 
       if(!host_ptr)

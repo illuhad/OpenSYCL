@@ -190,11 +190,12 @@ public:
       : queue{detail::select_devices(deviceSelector), asyncHandler, propList} {}
 
   explicit queue(const device &syclDevice, const property_list &propList = {})
-      : queue{context{syclDevice}, std::vector<device>{syclDevice}, propList} {}
+      : queue{get_default_context(syclDevice), std::vector<device>{syclDevice},
+              propList} {}
 
   explicit queue(const device &syclDevice, const async_handler &asyncHandler,
                  const property_list &propList = {})
-      : queue{context{syclDevice, asyncHandler}, std::vector<device>{syclDevice},
+      : queue{get_default_context(syclDevice), std::vector<device>{syclDevice},
               asyncHandler, propList} {}
 
   template <
@@ -231,10 +232,10 @@ public:
   explicit queue(const std::vector<device> &devices,
                  const async_handler &handler,
                  const property_list &propList = {})
-      : queue{context{devices, handler}, devices, handler, propList} {}
+      : queue{get_default_context(devices), devices, handler, propList} {}
 
   explicit queue(const std::vector<device>& devices, const property_list& propList = {})
-    : queue{context{devices}, devices, propList} {}
+    : queue{get_default_context(devices), devices, propList} {}
 
   explicit queue(const context &syclContext, const std::vector<device> &devices,
                  const property_list &propList = {})
@@ -1023,6 +1024,20 @@ public:
     return AdaptiveCpp_inorder_executor();
   }
 private:
+  static context get_default_context(const device& dev) {
+    return context{detail::default_context_tag_t{}, dev.get_platform()};
+  }
+
+  static context get_default_context(const std::vector<device> &devices) {
+    if(devices.empty())
+      return context{detail::default_context_tag_t{}};
+    if(devices.size() == 1){
+      return context{detail::default_context_tag_t{}, devices[0].get_platform()};
+    } else {
+      return context{detail::default_context_tag_t{}, devices};
+    }
+  }
+
   template<int Dim>
   void apply_preferred_group_size(const property_list& prop_list, handler& cgh) {
     if(prop_list.has_property<property::command_group::AdaptiveCpp_prefer_group_size<Dim>>()){

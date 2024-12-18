@@ -296,7 +296,12 @@ public:
       
     } else if constexpr (type == rt::kernel_type::custom) {
       // handled at invoke time
-      data.custom_op = k;
+      data.custom_op = [k](rt::kernel_operation * kernel_op, sycl::interop_handle& ih) mutable {
+          kernel_op->initialize_embedded_pointers(
+              static_cast<void*>(&k),
+              sizeof(Kernel));
+          k(ih);
+       };
     }
     else {
       assert(false && "Unsupported kernel type");
@@ -314,8 +319,9 @@ public:
       assert(backend_params);
       sycl::interop_handle handle{node->get_assigned_device(),
                                   backend_params};
-
-      launch_config.custom_op(handle);
+      auto *kernel_op =
+          static_cast<rt::kernel_operation *>(node->get_operation());
+      launch_config.custom_op(kernel_op, handle);
 
       return rt::make_success();
     } else {

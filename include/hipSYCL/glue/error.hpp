@@ -28,11 +28,11 @@ namespace glue {
 inline void print_async_errors(sycl::exception_list error_list) {
   if (error_list.size() > 0) {
     std::ostream& output_stream = common::output_stream::get().get_stream();
-    output_stream << "============== hipSYCL error report ============== "
+    output_stream << "============== AdaptiveCpp error report ============== "
                   << std::endl;
 
     output_stream
-        << "hipSYCL has caught the following unhandled asynchronous errors: "
+        << "AdaptiveCpp has caught the following unhandled asynchronous errors: "
         << std::endl << std::endl;
 
     int idx = 0;

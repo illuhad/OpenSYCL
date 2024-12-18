@@ -6,7 +6,7 @@ else()
 endif()
 
 if(NOT ACPP_LLVM_COMPONENT)
-  cmake_minimum_required(VERSION 3.5)
+  cmake_minimum_required(VERSION 3.10)
   project(acpp-clang)
 else()
   add_compile_definitions(ACPP_LLVM_COMPONENT)
@@ -51,13 +51,13 @@ if(WITH_ACCELERATED_CPU OR WITH_SSCP_COMPILER)
       ${CBS_PLUGIN}
     )
   endif()
-  
+
   set_property(TARGET acpp-clang-cbs PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
 if(WITH_SSCP_COMPILER)
   set(WITH_REFLECTION_BUILTINS ON)
-  set(SSCP_COMPILER 
+  set(SSCP_COMPILER
     sscp/KernelOutliningPass.cpp
     sscp/IRConstantReplacer.cpp
     sscp/DynamicFunctionSupport.cpp

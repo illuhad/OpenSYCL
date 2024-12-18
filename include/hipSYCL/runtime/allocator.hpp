@@ -33,14 +33,24 @@ struct pointer_info {
 class backend_allocator
 {
 public:
-  virtual void *allocate(size_t min_alignment, size_t size_bytes) = 0;
-  // Optimized host memory - may be page-locked, device mapped if supported
-  virtual void* allocate_optimized_host(size_t min_alignment, size_t bytes) = 0;
-  virtual void free(void *mem) = 0;
-  
 
-  /// Allocate memory accessible both from the host and the backend
-  virtual void *allocate_usm(size_t bytes) = 0;
+  /// Raw allocation mechanism that does not interact with the runtime's
+  /// event handler mechanism. Should not be called directly in most cases.
+  virtual void *raw_allocate(size_t min_alignment, size_t size_bytes) = 0;
+  /// Optimized host memory - may be page-locked, device mapped if supported
+  /// Raw mechanism that does not interact with the runtime's
+  /// event handler mechanism. Should not be called directly in most cases.
+  virtual void* raw_allocate_optimized_host(size_t min_alignment, size_t bytes) = 0;
+  /// Raw free mechanism that does not interact with the runtime's
+  /// event handler mechanism. Should not be called directly in most cases.
+  virtual void raw_free(void *mem) = 0;
+  /// Allocate memory accessible both from the host and the backend.
+  /// Raw mechanism that does not interact with the runtime's
+  /// event handler mechanism. Should not be called directly in most cases.
+  virtual void *raw_allocate_usm(size_t bytes) = 0;
+  
+  virtual device_id get_device() const = 0;
+
   virtual bool is_usm_accessible_from(backend_descriptor b) const = 0;
 
   // Query the given pointer for its properties. If pointer is unknown,
@@ -52,6 +62,14 @@ public:
 
   virtual ~backend_allocator(){}
 };
+
+void *allocate_device(backend_allocator *alloc, size_t min_alignment,
+                      size_t size_bytes);
+void *allocate_host(backend_allocator *alloc, size_t min_alignment,
+                              size_t bytes);
+void *allocate_shared(backend_allocator* alloc, size_t bytes);
+void deallocate(backend_allocator* alloc, void *mem);
+
 
 }
 }

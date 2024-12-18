@@ -91,7 +91,7 @@ result ensure_allocation_exists(runtime *rt,
     // cause backends to align to the largest supported type.
     // TODO: A better solution might be to select a custom alignment
     // best on sizeof(T). This requires querying backend alignment capabilities.
-    void *ptr = allocator->allocate(0, num_bytes);
+    void *ptr = rt::allocate_device(allocator, 0, num_bytes);
 
     if(!ptr)
       return register_error(

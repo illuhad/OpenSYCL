@@ -47,7 +47,7 @@ public:
 private:
 
   output_stream()
-  : _debug_level {HIPSYCL_DEBUG_LEVEL}, _output_stream{std::cout} {
+  : _debug_level {HIPSYCL_DEBUG_LEVEL}, _output_stream{std::cerr} {
 #if !defined(HIPSYCL_COMPILER_COMPONENT) && !defined(HIPSYCL_TOOL_COMPONENT)
     _debug_level =
         rt::application::get_settings().get<rt::setting::debug_level>();

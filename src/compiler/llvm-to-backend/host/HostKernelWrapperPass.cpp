@@ -85,7 +85,8 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
       llvm::StructType::get(llvm::ArrayType::get(SizeT, 3),                 // # groups
                             llvm::ArrayType::get(SizeT, 3),                 // group id
                             llvm::ArrayType::get(SizeT, 3),                 // local size
-                            llvm::PointerType::getUnqual(Bld.getInt8Ty())); // local memory size
+                            llvm::PointerType::getUnqual(Bld.getInt8Ty()), // local memory ptr
+                            llvm::PointerType::getUnqual(Bld.getInt8Ty())); // internal local memory ptr
   auto VoidPtrT = llvm::PointerType::getUnqual(Bld.getInt8Ty());
   auto UserArgsT = llvm::PointerType::getUnqual(VoidPtrT);
 
@@ -138,6 +139,11 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
         llvm::LLVMContext::MD_dereferenceable,
         llvm::MDNode::get(Ctx, {llvm::ConstantAsMetadata::get(Bld.getInt64(DynamicLocalMemSize))}));
 
+  auto InternalLocalMemPtr = Bld.CreateLoad(
+      VoidPtrT,
+      Bld.CreateInBoundsGEP(WorkGroupInfoT, Wrapper->getArg(0), {Bld.getInt64(0), Bld.getInt32(4)}),
+      "internal_local_mem_ptr");
+
   llvm::SmallVector<llvm::Value *> Args;
 
   auto ArgArray = Wrapper->arg_begin() + 1;
@@ -171,6 +177,7 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
     replaceUsesOfGVWith(*Wrapper, cbs::LocalSizeGlobalNames[I], LocalSize[I]);
   }
   replaceUsesOfGVWith(*Wrapper, cbs::SscpDynamicLocalMemoryPtrName, LocalMemPtr);
+  replaceUsesOfGVWith(*Wrapper, cbs::SscpInternalLocalMemoryPtrName, InternalLocalMemPtr);
 
   F.setLinkage(llvm::GlobalValue::LinkageTypes::InternalLinkage);
   F.replaceAllUsesWith(Wrapper);

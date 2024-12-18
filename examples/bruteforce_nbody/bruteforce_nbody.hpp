@@ -12,8 +12,7 @@
 #ifndef BRUTEFORCE_NBODY_HPP
 #define BRUTEFORCE_NBODY_HPP
 
-#include <CL/sycl.hpp>
-using namespace cl;
+#include <sycl/sycl.hpp>
 
 using arithmetic_type = float;
 using vector_type = sycl::vec<arithmetic_type, 3>;

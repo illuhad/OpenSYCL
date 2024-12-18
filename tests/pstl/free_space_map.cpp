@@ -24,7 +24,9 @@
 
 BOOST_AUTO_TEST_SUITE(pstl_free_space_map)
 
-using amap_t = hipsycl::stdpar::allocation_map<>;
+struct payload {};
+
+using amap_t = hipsycl::stdpar::allocation_map<payload>;
 using fmap_t = hipsycl::stdpar::free_space_map;
 
 uint64_t next_pow2(uint64_t x) {

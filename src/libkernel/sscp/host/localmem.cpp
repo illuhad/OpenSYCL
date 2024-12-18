@@ -11,7 +11,9 @@
 #include "hipSYCL/sycl/libkernel/sscp/builtins/localmem.hpp"
 
 extern "C" void* __acpp_cbs_sscp_dynamic_local_memory;
+extern "C" void* __acpp_cbs_sscp_internal_local_memory;
 
+HIPSYCL_SSCP_BUILTIN
 __attribute__((address_space(3))) void* __acpp_sscp_get_dynamic_local_memory() {
 
   // We rely on the host side allocating page-aligned memory. On all relevant
@@ -19,4 +21,11 @@ __attribute__((address_space(3))) void* __acpp_sscp_get_dynamic_local_memory() {
   // conservative minimum alignment seems safe.
   return (__attribute__((address_space(3))) void *)(__builtin_assume_aligned(
       __acpp_cbs_sscp_dynamic_local_memory, 512));
+}
+
+
+HIPSYCL_SSCP_BUILTIN
+void* __acpp_sscp_host_get_internal_local_memory() {
+  return (void *)(__builtin_assume_aligned(
+      __acpp_cbs_sscp_internal_local_memory, 512));
 }

@@ -16,13 +16,15 @@
 #include "hipSYCL/compiler/llvm-to-backend/KnownGroupSizeOptPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/LLVMToBackend.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/KnownPtrParamAlignmentOptPass.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/ProcessS2ReflectionPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
 #include "hipSYCL/compiler/sscp/KernelOutliningPass.hpp"
 #include "hipSYCL/compiler/utils/ProcessFunctionAnnotationsPass.hpp"
 #include "hipSYCL/compiler/utils/LLVMUtils.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
-// #include "hipSYCL/sycl/access.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
+#include "hipSYCL/sycl/access.hpp"
 
 #include <cstdint>
 
@@ -40,14 +42,96 @@
 #include <llvm/Linker/Linker.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <string>
+#include <optional>
+#include <cstdlib>
+#include <sstream>
+#include <unordered_set>
 
 namespace hipsycl {
 namespace compiler {
 
 namespace {
+
+template<class T>
+std::optional<T> getEnvironmentVariable(const std::string& Name) {
+  std::string EnvName = Name;
+  std::transform(EnvName.begin(), EnvName.end(), EnvName.begin(), ::toupper);
+
+  if(const char* EnvVal = std::getenv(("ACPP_S2_"+EnvName).c_str())) {
+    T val;
+    std::stringstream sstr{std::string{EnvVal}};
+    sstr >> val;
+    if (!sstr.fail() && !sstr.bad()) {
+      return val;
+    }
+  }
+  return {};
+}
+
+template<class T>
+T getEnvironmentVariableOrDefault(const std::string& Name,
+                                      const T& Default) {
+  std::optional<T> v = getEnvironmentVariable<T>(Name);
+  if(v.has_value()) {
+    return v.value();
+  }
+  return Default;
+}
+
+void printModuleToFile(llvm::Module& M, const std::string& File,
+                      const std::string& Header){
+
+  // Desired behavior is to truncate files for each application run,
+  // but append content in the dump file within one application run.
+  static std::unordered_set<std::string> UsedFiles;
+  auto OpenFlag = llvm::sys::fs::OpenFlags::OF_Append;
+  if(UsedFiles.find(File) == UsedFiles.end()) {
+    OpenFlag = llvm::sys::fs::OpenFlags::OF_None;
+    UsedFiles.insert(File);
+  }
+
+  std::error_code EC;
+  llvm::raw_fd_ostream Out{File, EC, OpenFlag};
+  Out << ";---------------- Begin AdaptiveCpp IR dump --------------\n";
+  Out << Header;
+  M.print(Out, nullptr);
+  Out << ";----------------- End AdaptiveCpp IR dump ---------------\n";
+}
+
+void enableModuleStateDumping(llvm::Module &M, const std::string &PipelineStage,
+                              const std::string &Kernels) {
+  std::string Filter =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_FILTER", "");
+
+  std::string FallbackFileName = M.getSourceFileName()+".ll";
+  std::string FileName =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_" + PipelineStage, "");
+
+  if(FileName == "1")
+    FileName = FallbackFileName;
+  
+  std::string Header =
+      "; AdaptiveCpp SSCP S2 IR dump; Compiling kernels: " + Kernels + ", stage: " + PipelineStage + "\n";
+
+  if(FileName.length() != 0) {
+    if(Kernels == Filter || Filter.empty())
+      printModuleToFile(M, FileName, Header);
+  }
+
+  std::string AllFileName =
+      getEnvironmentVariableOrDefault<std::string>("DUMP_IR_ALL", "");
+  if(AllFileName == "1")
+    AllFileName = FallbackFileName;
+
+  if(AllFileName.length() != 0 && AllFileName != FileName) {
+    if(Kernels == Filter || Filter.empty())
+      printModuleToFile(M, AllFileName, Header);
+  }
+}
 
 bool linkBitcode(llvm::Module &M, std::unique_ptr<llvm::Module> OtherM,
                    const std::string &ForcedTriple = "",
@@ -220,6 +304,7 @@ bool LLVMToBackendTranslator::fullTransformation(const std::string &LLVMIR, std:
 }
 
 bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
+  enableModuleStateDumping(M, "input", getCompilationIdentifier());
 
   HIPSYCL_DEBUG_INFO << "LLVMToBackend: Preparing backend flavoring...\n";
 
@@ -237,7 +322,7 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
       InitialOutliningEntrypoints.push_back(FName);
     KernelOutliningPass InitialOutlining{InitialOutliningEntrypoints};
     InitialOutlining.run(M, MAM);
-    
+    enableModuleStateDumping(M, "initial_outlining", getCompilationIdentifier());
     // We need to resolve symbols now instead of after optimization, because we
     // may have to reoutline if the code that is linked in after symbol resolution
     // depends on IR constants.
@@ -255,16 +340,43 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     // Return error in case applying specializations has caused error list to be populated
     if(!Errors.empty())
       return false;
+    
+    enableModuleStateDumping(M, "specialization", getCompilationIdentifier());
+
+    // Process stage 2 reflection calls
+    ReflectionFields["compiler_backend"] = this->getBackendId();
+    for(const auto& Fields : ReflectionFields) {
+      HIPSYCL_DEBUG_INFO << "LLVMToBackend: Setting up reflection fields: " << Fields.first << " = "
+                         << Fields.second << "\n";
+    }
+    ProcessS2ReflectionPass S2RP{ReflectionFields};
+    S2RP.run(M, MAM);
+
+    enableModuleStateDumping(M, "reflection", getCompilationIdentifier());
 
     // Optimize away unnecessary branches due to backend-specific S2IR constants
     // This is what allows us to specialize code for different backends.
     HIPSYCL_DEBUG_INFO << "LLVMToBackend: Optimizing branches post S2 IR constant application...\n";
     IRConstant::optimizeCodeAfterConstantModification(M, MAM);
+
     // Rerun kernel outlining pass so that we don't include unneeded functions
     // that are specific to other backends.
     HIPSYCL_DEBUG_INFO << "LLVMToBackend: Reoutlining kernels...\n";
     KernelOutliningPass KP{OutliningEntrypoints};
     KP.run(M, MAM);
+
+    for(auto& P : NoAliasParameters) {
+      auto* F = M.getFunction(P.first);
+      if(F) {
+        for(int i : P.second) {
+          HIPSYCL_DEBUG_INFO << "LLVMToBackend: Attaching noalias attribute to parameter " << i
+                             << " of kernel " << P.first << "\n";
+          if(i < F->getFunctionType()->getNumParams())
+            if(!F->hasParamAttribute(i, llvm::Attribute::AttrKind::NoAlias))
+              F->addParamAttr(i, llvm::Attribute::AttrKind::NoAlias);
+        }
+      }
+    }
 
     // These optimizations should be run before __acpp_sscp_* builtins
     // are resolved, so before backend bitcode libraries are linked. We thus
@@ -272,8 +384,12 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     KnownGroupSizeOptPass GroupSizeOptPass{KnownGroupSizeX, KnownGroupSizeY, KnownGroupSizeZ};
     GlobalSizesFitInI32OptPass SizesAsIntOptPass{GlobalSizesFitInInt, KnownGroupSizeX,
                                                  KnownGroupSizeY, KnownGroupSizeZ};
+
     GroupSizeOptPass.run(M, MAM);
     SizesAsIntOptPass.run(M, MAM);
+
+    KnownPtrParamAlignmentOptPass KnownAlignmentOptPass{KnownPtrParamAlignments};
+    KnownAlignmentOptPass.run(M, MAM);
 
     // Before optimizing, make sure everything has internal linkage to
     // help inlining. All linking should have occured by now, except
@@ -291,11 +407,18 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
     InstructionCleanupPass ICP;
     ICP.run(M, MAM);
 
+    enableModuleStateDumping(M, "jit_optimizations", getCompilationIdentifier());
+
     HIPSYCL_DEBUG_INFO << "LLVMToBackend: Adding backend-specific flavor to IR...\n";
     if(!this->toBackendFlavor(M, PH)) {
       HIPSYCL_DEBUG_INFO << "LLVMToBackend: Flavoring failed\n";
       return false;
     }
+
+    enableModuleStateDumping(M, "backend_flavoring", getCompilationIdentifier());
+    // Run again to resolve reflection inside builtins
+    S2RP.run(M, MAM);
+    enableModuleStateDumping(M, "builtin_reflection", getCompilationIdentifier());
 
     // Inline again to handle builtin definitions pulled in by backend flavors
     InliningPass.run(M, MAM);
@@ -326,6 +449,10 @@ bool LLVMToBackendTranslator::prepareIR(llvm::Module &M) {
       }
     }
     llvm::AlwaysInlinerPass{}.run(M, MAM);
+
+    enableModuleStateDumping(M, "full_optimizations", getCompilationIdentifier());
+    
+    enableModuleStateDumping(M, "final", getCompilationIdentifier());
 
     bool ContainsUnsetIRConstants = false;
     S2IRConstant::forEachS2IRConstant(M, [&](S2IRConstant C) {
@@ -431,13 +558,6 @@ bool LLVMToBackendTranslator::linkBitcodeFile(llvm::Module &M, const std::string
   HIPSYCL_DEBUG_INFO << "LLVMToBackend: Linking with bitcode file: " << BitcodeFile << "\n";
   return linkBitcodeString(M, std::string{F.get()->getBuffer()}, ForcedTriple, ForcedDataLayout,
                            LinkOnlyNeeded);
-}
-
-void LLVMToBackendTranslator::setS2IRConstant(const std::string &name, const void *ValueBuffer) {
-  SpecializationApplicators[name] = [=](llvm::Module& M){
-    S2IRConstant C = S2IRConstant::getFromConstantName(M, name);
-    C.set(ValueBuffer);
-  };
 }
 
 void LLVMToBackendTranslator::specializeKernelArgument(const std::string &KernelName, int ParamIndex,
@@ -582,6 +702,10 @@ void LLVMToBackendTranslator::specializeFunctionCalls(
   };
 }
 
+void LLVMToBackendTranslator::setNoAliasKernelParam(const std::string &KernelName, int ParamIndex) {
+  NoAliasParameters[KernelName].push_back(ParamIndex);
+}
+
 void LLVMToBackendTranslator::provideExternalSymbolResolver(ExternalSymbolResolver Resolver) {
   this->SymbolResolver = Resolver;
   this->HasExternalSymbolResolver = true;
@@ -693,6 +817,32 @@ void LLVMToBackendTranslator::runKernelDeadArgumentElimination(
                        << "\n";
   }
 }
+
+void LLVMToBackendTranslator::setKnownPtrParamAlignment(const std::string &FunctionName,
+                                                        int ParamIndex, int Alignment) {
+  for (auto &Entry : KnownPtrParamAlignments[FunctionName]) {
+    if (Entry.first == ParamIndex) {
+      Entry.second = Alignment;
+      return;
+    }
+  }
+  KnownPtrParamAlignments[FunctionName].push_back(std::make_pair(ParamIndex, Alignment));
+}
+
+void LLVMToBackendTranslator::setReflectionField(const std::string &str, uint64_t value) {
+  ReflectionFields[str] = value;
+}
+
+std::string LLVMToBackendTranslator::getCompilationIdentifier() const {
+  std::string Result;
+  for(const auto& K : Kernels) {
+    Result += "<Kernel:"+K+">";
+  }
+  if(Result.empty())
+    return "<no-kernels>";
+  return Result;
+}
+
 }
 }
 

@@ -13,7 +13,7 @@
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceInferencePass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/common/filesystem.hpp"
 #include "hipSYCL/common/debug.hpp"
 #include <llvm/ADT/SmallVector.h>
@@ -156,7 +156,8 @@ void replaceBrokenLLVMIntrinsics(llvm::Module& M) {
 }
 
 LLVMToPtxTranslator::LLVMToPtxTranslator(const std::vector<std::string> &KN)
-    : LLVMToBackendTranslator{sycl::jit::backend::ptx, KN, KN}, KernelNames{KN} {}
+    : LLVMToBackendTranslator{static_cast<int>(sycl::AdaptiveCpp_jit::compiler_backend::ptx), KN, KN},
+      KernelNames{KN} {}
 
 bool LLVMToPtxTranslator::toBackendFlavor(llvm::Module &M, PassHandler& PH) {
   std::string Triple = "nvptx64-nvidia-cuda";

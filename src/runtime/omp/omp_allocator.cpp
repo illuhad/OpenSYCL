@@ -21,7 +21,14 @@ namespace rt {
 omp_allocator::omp_allocator(const device_id &my_device)
     : _my_device{my_device} {}
 
-void *omp_allocator::allocate(size_t min_alignment, size_t size_bytes) {
+void *omp_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
+  if(min_alignment < 32) {
+    // Enforce alignment by default for performance reasons.
+    // 32 is chosen since this is what is currently needed by the adaptivity
+    // engine to consider an allocation strongly aligned.
+    return raw_allocate(32, size_bytes);
+  }
+
 #if !defined(_WIN32)
   // posix requires alignment to be a multiple of sizeof(void*)
   if (min_alignment < sizeof(void*))
@@ -35,11 +42,12 @@ void *omp_allocator::allocate(size_t min_alignment, size_t size_bytes) {
     min_alignment = 1;
 #endif
 
-  if(size_bytes % min_alignment != 0)
-    return nullptr;
+  if(min_alignment > 0 && size_bytes % min_alignment != 0)
+    return raw_allocate(min_alignment,
+                        next_multiple_of(size_bytes, min_alignment));
 
-  // ToDo: Mac OS CI has a problem with std::aligned_alloc
-  // but it's unclear if it's a Mac, or libc++, or toolchain issue
+    // ToDo: Mac OS CI has a problem with std::aligned_alloc
+    // but it's unclear if it's a Mac, or libc++, or toolchain issue
 #ifdef __APPLE__
   return aligned_alloc(min_alignment, size_bytes);
 #elif !defined(_WIN32)
@@ -50,12 +58,12 @@ void *omp_allocator::allocate(size_t min_alignment, size_t size_bytes) {
 #endif
 }
 
-void *omp_allocator::allocate_optimized_host(size_t min_alignment,
+void *omp_allocator::raw_allocate_optimized_host(size_t min_alignment,
                                              size_t bytes) {
-  return this->allocate(min_alignment, bytes);
+  return this->raw_allocate(min_alignment, bytes);
 };
 
-void omp_allocator::free(void *mem) {
+void omp_allocator::raw_free(void *mem) {
 #if !defined(_WIN32)
   std::free(mem);
 #else
@@ -63,8 +71,8 @@ void omp_allocator::free(void *mem) {
 #endif
 }
 
-void* omp_allocator::allocate_usm(size_t bytes) {
-  return this->allocate(0, bytes);
+void* omp_allocator::raw_allocate_usm(size_t bytes) {
+  return this->raw_allocate(0, bytes);
 }
 
 bool omp_allocator::is_usm_accessible_from(backend_descriptor b) const {
@@ -72,6 +80,10 @@ bool omp_allocator::is_usm_accessible_from(backend_descriptor b) const {
     return true;
   }
   return false;
+}
+
+device_id omp_allocator::get_device() const {
+  return _my_device;
 }
 
 result omp_allocator::query_pointer(const void *ptr, pointer_info &out) const {

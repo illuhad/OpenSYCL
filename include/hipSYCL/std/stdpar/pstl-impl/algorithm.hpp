@@ -20,6 +20,7 @@
 #include "../detail/stdpar_defs.hpp"
 #include "../detail/offload.hpp"
 #include "hipSYCL/algorithms/algorithm.hpp"
+#include "hipSYCL/algorithms/util/allocation_cache.hpp"
 #include "hipSYCL/std/stdpar/detail/offload_heuristic_db.hpp"
 
 namespace std {
@@ -153,9 +154,23 @@ ForwardIt2 copy_if(hipsycl::stdpar::par_unseq,
                    ForwardIt2 d_first,
                    UnaryPredicate pred) {
   auto offloader = [&](auto& queue){
+    auto output_scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::host>();
+    auto device_scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+    std::size_t *num_elements_copied =
+        output_scratch_group.obtain<std::size_t>(1);
+    
+    hipsycl::algorithms::copy_if(queue, device_scratch_group, first, last,
+                                 d_first, pred, num_elements_copied);
+    queue.wait();
+
     ForwardIt2 d_last = d_first;
-    std::advance(d_last, std::distance(first, last));
-    hipsycl::algorithms::copy_if(queue, first, last, d_first, pred);
+    std::advance(d_last, *num_elements_copied);
     return d_last;
   };
 
@@ -164,7 +179,7 @@ ForwardIt2 copy_if(hipsycl::stdpar::par_unseq,
                         d_first, pred);
   };
 
-  HIPSYCL_STDPAR_OFFLOAD(
+  HIPSYCL_STDPAR_BLOCKING_OFFLOAD(
       hipsycl::stdpar::algorithm(hipsycl::stdpar::algorithm_category::copy_if{},
                                  hipsycl::stdpar::par_unseq{}),
       std::distance(first, last), ForwardIt2, offloader, fallback, first,
@@ -725,9 +740,23 @@ ForwardIt2 copy_if(hipsycl::stdpar::par,
                    ForwardIt2 d_first,
                    UnaryPredicate pred) {
   auto offloader = [&](auto& queue){
+    auto output_scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::host>();
+    auto device_scratch_group =
+        hipsycl::stdpar::detail::stdpar_tls_runtime::get()
+            .make_scratch_group<
+                hipsycl::algorithms::util::allocation_type::device>();
+    std::size_t *num_elements_copied =
+        output_scratch_group.obtain<std::size_t>(1);
+    
+    hipsycl::algorithms::copy_if(queue, device_scratch_group, first, last,
+                                 d_first, pred, num_elements_copied);
+    queue.wait();
+
     ForwardIt2 d_last = d_first;
-    std::advance(d_last, std::distance(first, last));
-    hipsycl::algorithms::copy_if(queue, first, last, d_first, pred);
+    std::advance(d_last, *num_elements_copied);
     return d_last;
   };
 
@@ -736,7 +765,7 @@ ForwardIt2 copy_if(hipsycl::stdpar::par,
                         d_first, pred);
   };
 
-  HIPSYCL_STDPAR_OFFLOAD(
+  HIPSYCL_STDPAR_BLOCKING_OFFLOAD(
       hipsycl::stdpar::algorithm(hipsycl::stdpar::algorithm_category::copy_if{},
                                  hipsycl::stdpar::par{}),
       std::distance(first, last), ForwardIt2, offloader, fallback, first,

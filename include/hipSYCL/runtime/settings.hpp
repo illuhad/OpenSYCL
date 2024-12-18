@@ -107,7 +107,8 @@ enum class setting {
   adaptivity_level,
   jitopt_iads_relative_threshold,
   jitopt_iads_relative_eviction_threshold,
-  jitopt_iads_relative_threshold_min_data
+  jitopt_iads_relative_threshold_min_data,
+  enable_allocation_tracking
 };
 
 template <setting S> struct setting_trait {};
@@ -146,6 +147,7 @@ HIPSYCL_RT_MAKE_SETTING_TRAIT(setting::jitopt_iads_relative_eviction_threshold, 
 HIPSYCL_RT_MAKE_SETTING_TRAIT(setting::jitopt_iads_relative_threshold_min_data,
                               "jitopt_iads_relative_threshold_min_data",
                               std::size_t)
+HIPSYCL_RT_MAKE_SETTING_TRAIT(setting::enable_allocation_tracking, "allocation_tracking", bool)
 
 class settings
 {
@@ -190,6 +192,8 @@ public:
       return _jitopt_iads_relative_threshold_min_data;
     } else if constexpr(S == setting::jitopt_iads_relative_eviction_threshold) {
       return _jitopt_iads_relative_eviction_threshold;
+    } else if constexpr(S == setting::enable_allocation_tracking) {
+      return _enable_allocation_tracking;
     }
     return typename setting_trait<S>::type{};
   }
@@ -242,6 +246,8 @@ public:
         get_environment_variable_or_default<setting::jitopt_iads_relative_eviction_threshold>(0.1);
     _jitopt_iads_relative_threshold_min_data =
         get_environment_variable_or_default<setting::jitopt_iads_relative_threshold_min_data>(1024);
+    _enable_allocation_tracking =
+        get_environment_variable_or_default<setting::enable_allocation_tracking>(false);
   }
 
 private:
@@ -273,6 +279,7 @@ private:
   double _jitopt_iads_relative_threshold;
   double _jitopt_iads_relative_eviction_threshold;
   std::size_t _jitopt_iads_relative_threshold_min_data;
+  bool _enable_allocation_tracking;
 };
 
 }

@@ -69,6 +69,12 @@ enum class kernel_build_flag : int {
   spirv_enable_intel_llvm_spirv_options
 };
 
+enum class kernel_param_flag : int {
+  // these values are used as bit masks and should
+  // always have a value of a power of 2
+  noalias = 1
+};
+
 
 
 std::string to_string(kernel_build_flag f);
@@ -83,62 +89,6 @@ to_build_flag(const std::string& s);
 
 
 class kernel_configuration {
-
-  class s2_ir_configuration_entry {
-    static constexpr std::size_t buffer_size = 8;
-
-    std::string _name;
-    std::type_index _type;
-    std::array<int8_t, buffer_size> _value;
-    std::size_t _data_size;
-    
-
-    template<class T>
-    void store(const T& val) {
-      static_assert(sizeof(T) <= buffer_size,
-                    "Unsupported kernel configuration value type");
-      for(int i = 0; i < _value.size(); ++i)
-        _value[i] = 0;
-      
-      memcpy(_value.data(), &val, sizeof(val));
-    }
-
-  public:
-    template<class T>
-    s2_ir_configuration_entry(const std::string& name, const T& val)
-    : _name{name}, _type{typeid(T)}, _data_size{sizeof(T)} {
-      store<T>(val);
-    }
-
-    template<class T>
-    T get_value() const {
-      static_assert(sizeof(T) <= buffer_size,
-                    "Unsupported kernel configuration value type");
-      T v;
-      memcpy(&v, _value.data(), sizeof(T));
-      return v;
-    }
-
-    template<class T>
-    bool is_type() const {
-      return _type == typeid(T);
-    }
-
-    const void* get_data_buffer() const {
-      return _value.data();
-    }
-
-    std::size_t get_data_size() const {
-      return _data_size;
-    }
-
-    const std::string& get_name() const {
-      return _name;
-    }
-  };
-
-
-
 public:
   struct int_or_string{
     std::optional<uint64_t> int_value;
@@ -146,18 +96,6 @@ public:
   };
 
   using id_type = std::array<uint64_t, 2>;
-
-  template<class T>
-  void set_s2_ir_constant(const std::string& config_parameter_name, const T& value) {
-    s2_ir_configuration_entry entry{config_parameter_name, value};
-    for(int i = 0; i < _s2_ir_configurations.size(); ++i) {
-      if(_s2_ir_configurations[i].get_name() == config_parameter_name) {
-        _s2_ir_configurations[i] = entry;
-        return;
-      }
-    }
-    _s2_ir_configurations.push_back(entry);
-  }
 
   void set_specialized_kernel_argument(int param_index, uint64_t buffer_value) {
     for(int i = 0; i < _specialized_kernel_args.size(); ++i) {
@@ -168,6 +106,12 @@ public:
     }
     _specialized_kernel_args.push_back(
         std::make_pair(param_index, buffer_value));
+  }
+
+  void set_kernel_param_flag(int param_index, kernel_param_flag flag) {
+    if(_kernel_param_flags.size() <= param_index)
+      _kernel_param_flags.resize(param_index+1, 0);
+    _kernel_param_flags[param_index] |= static_cast<uint64_t>(flag);
   }
 
   void set_function_call_specialization_config(
@@ -197,6 +141,16 @@ public:
     _build_flags.push_back(flag);
   }
 
+  void set_known_alignment(int param_index, int alignment) {
+    for(auto& entry : _known_alignments) {
+      if(entry.first == param_index) {
+        entry.second = alignment;
+        return;
+      }
+    }
+    _known_alignments.push_back(std::make_pair(param_index, alignment));
+  }
+
   template <class ValueT>
   void append_base_configuration(kernel_base_config_parameter key,
                                  const ValueT &value) {
@@ -216,12 +170,6 @@ public:
 
   id_type generate_id() const {
     id_type result = _base_configuration_result;
-
-    for(const auto& entry : _s2_ir_configurations) {
-      add_entry_to_hash(result, entry.get_name().data(),
-                        entry.get_name().size(), entry.get_data_buffer(),
-                        entry.get_data_size());
-    }
 
     for(const auto& entry : _build_options) {
       uint64_t numeric_option_id = static_cast<uint64_t>(entry.first) | (1ull << 32);
@@ -255,11 +203,23 @@ public:
                         &config_id, sizeof(config_id));
     }
 
-    return result;
-  }
+    for(int i = 0; i < _kernel_param_flags.size(); ++i) {
+      if(_kernel_param_flags[i] != 0) {
+        auto flags = _kernel_param_flags[i];
+        uint64_t numeric_option_id = static_cast<uint64_t>(i) | (1ull << 36);
+        add_entry_to_hash(result, &numeric_option_id, sizeof(numeric_option_id),
+                          &flags, sizeof(flags));
+      }
+    }
+    
+    for(const auto& entry : _known_alignments) {
+      uint64_t numeric_option_id = static_cast<uint64_t>(entry.first) | (1ull << 37);
+      uint64_t config_id = entry.second;
+      add_entry_to_hash(result, &numeric_option_id, sizeof(numeric_option_id),
+                        &config_id, sizeof(config_id));
+    }
 
-  const auto& s2_ir_entries() const {
-    return _s2_ir_configurations;
+    return result;
   }
 
   const auto& build_options() const {
@@ -278,9 +238,25 @@ public:
     return _function_call_specializations;
   }
 
+  bool has_kernel_param_flag(int param_index, kernel_param_flag flag) const {
+    if(param_index < _kernel_param_flags.size()) {
+      return _kernel_param_flags[param_index] & static_cast<uint64_t>(flag);
+    }
+
+    return false;
+  }
+
+  std::size_t get_num_kernel_param_indices() const {
+    return _kernel_param_flags.size();
+  }
+  
+  const auto& known_alignments() const {
+    return _known_alignments;
+  }
+
 private:
   static const void* data_ptr(const char* data) {
-    return data_ptr(std::string{data});
+    return data_ptr(data);
   }
 
   static const void* data_ptr(const std::string& data) {
@@ -302,7 +278,7 @@ private:
   }
 
   static std::size_t data_size(const char* data) {
-    return data_size(std::string{data});
+    return data_size(std::string_view{data});
   }
 
   static std::size_t data_size(const std::string& data) {
@@ -333,13 +309,13 @@ private:
     hash[entry_hash % hash.size()] ^= entry_hash;
   }
 
-
-  std::vector<s2_ir_configuration_entry> _s2_ir_configurations;
   std::vector<kernel_build_flag> _build_flags;
   std::vector<std::pair<kernel_build_option, int_or_string>> _build_options;
   std::vector<std::pair<int, uint64_t>> _specialized_kernel_args;
   std::vector<glue::sscp::fcall_config_kernel_property_t>
       _function_call_specializations;
+  std::vector<uint64_t> _kernel_param_flags;
+  std::vector<std::pair<int, int>> _known_alignments;
 
   id_type _base_configuration_result = {};
 };
