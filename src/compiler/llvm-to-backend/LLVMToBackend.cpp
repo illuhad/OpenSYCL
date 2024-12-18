@@ -24,7 +24,6 @@
 #include "hipSYCL/compiler/utils/ProcessFunctionAnnotationsPass.hpp"
 #include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
-#include "hipSYCL/sycl/access.hpp"
 
 #include <cstdint>
 
