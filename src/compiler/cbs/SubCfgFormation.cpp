@@ -354,7 +354,7 @@ void createLoopsAround(llvm::Function &F, llvm::BasicBlock *AfterBB,
 
   // in case code references all dimensions, we need to set the remaining dimensions to 0
   for (size_t D = Dim; D < 3; ++D) {
-    auto ID = mergeGVLoadsInEntry(F, LocalIdGlobalNamesRotated[D]);
+    auto ID = mergeGVLoadsInEntry(F, LocalIdGlobalNames[D]);
     ID->replaceAllUsesWith(Builder.getIntN(Idx->getType()->getIntegerBitWidth(), 0));
     ID->eraseFromParent();
   }
