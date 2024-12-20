@@ -31,7 +31,6 @@ add_library(acpp-rt SHARED
   backend.cpp
   backend_loader.cpp
   device_id.cpp
-  dylib_loader.cpp
   operations.cpp
   data.cpp
   inorder_executor.cpp

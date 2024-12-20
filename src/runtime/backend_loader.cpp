@@ -9,11 +9,11 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/runtime/backend_loader.hpp"
-#include "hipSYCL/runtime/application.hpp"
-#include "hipSYCL/runtime/dylib_loader.hpp"
-#include "hipSYCL/common/filesystem.hpp"
-#include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/common/config.hpp"
+#include "hipSYCL/common/debug.hpp"
+#include "hipSYCL/common/dylib_loader.hpp"
+#include "hipSYCL/common/filesystem.hpp"
+#include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/device_id.hpp"
 
 #include <cassert>
@@ -21,7 +21,7 @@
 #ifndef _WIN32
 #include <dlfcn.h>
 #else
-#include <windows.h> 
+#include <windows.h>
 #endif
 
 #include HIPSYCL_CXX_FILESYSTEM_HEADER
@@ -29,12 +29,13 @@ namespace fs = HIPSYCL_CXX_FILESYSTEM_NAMESPACE;
 
 namespace {
 
-using namespace hipsycl::rt::detail;
+using namespace hipsycl::common;
 bool load_plugin(const std::string &filename, void *&handle_out,
                  std::string &backend_name_out) {
-  if(void *handle = load_library(filename, "backend_loader")) {
-    if(void* symbol = get_symbol_from_library(handle, "hipsycl_backend_plugin_get_name", "backend_loader"))
-    {
+  std::string message = "";
+  if (void *handle = load_library(filename, message)) {
+    if (void *symbol = get_symbol_from_library(
+            handle, "hipsycl_backend_plugin_get_name", message)) {
       auto get_name =
           reinterpret_cast<decltype(&hipsycl_backend_plugin_get_name)>(symbol);
 
@@ -43,23 +44,36 @@ bool load_plugin(const std::string &filename, void *&handle_out,
 
       return true;
     } else {
-      close_library(handle, "backend_loader");
+      if (!message.empty()) {
+        HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
+        message = "";
+      }
+      close_library(handle, message);
+      if (!message.empty()) {
+        HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+      }
       return false;
     }
   } else {
+    if (!message.empty()) {
+      HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
+    }
     return false;
-  } 
+  }
 }
 
 hipsycl::rt::backend *create_backend(void *plugin_handle) {
   assert(plugin_handle);
 
-  if(void *symbol = get_symbol_from_library(plugin_handle, "hipsycl_backend_plugin_create", "backend_loader"))
-  {
+  std::string message;
+  if (void *symbol = get_symbol_from_library(
+          plugin_handle, "hipsycl_backend_plugin_create", message)) {
     auto create_backend_func =
         reinterpret_cast<decltype(&hipsycl_backend_plugin_create)>(symbol);
 
     return create_backend_func();
+  } else if (!message.empty()) {
+    HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
   }
   return nullptr;
 }
@@ -169,7 +183,11 @@ void backend_loader::query_backends() {
                                 << std::endl;
               _handles.emplace_back(std::make_pair(backend_name, handle));
             } else {
-              close_library(handle, "backend_loader");
+              std::string message = "";
+              close_library(handle, message);
+              if(!message.empty()) {
+                HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+              }
             }
           }
         }
@@ -181,7 +199,12 @@ void backend_loader::query_backends() {
 backend_loader::~backend_loader() {
   for (auto &handle : _handles) {
     assert(handle.second);
-    close_library(handle.second, "backend_loader");
+
+    std::string message;
+    close_library(handle.second, message);
+    if (!message.empty()) {
+      HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+    }
   }
 }
 
@@ -217,5 +240,5 @@ backend *backend_loader::create(const std::string &name) const {
   return nullptr;
 }
 
-}
+} // namespace rt
 } // namespace hipsycl

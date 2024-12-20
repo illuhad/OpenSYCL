@@ -1,7 +1,9 @@
 
 add_library(acpp-common SHARED
     filesystem.cpp
-    appdb.cpp)
+    appdb.cpp
+    dylib_loader.cpp  
+  )
 
 target_include_directories(acpp-common
   PUBLIC

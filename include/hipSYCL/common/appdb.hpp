@@ -20,6 +20,7 @@
 #include "msgpack/msgpack.hpp"
 
 #include "hipSYCL/runtime/kernel_configuration.hpp"
+#include "export.hpp"
 
 namespace hipsycl::common::db {
 
@@ -29,7 +30,7 @@ struct kernel_arg_value_statistics {
   uint64_t last_used = 0; // The number of the kernel invocation where this value
                       // was last used
 
-  void dump(std::ostream& ostr, int indentation_level=0) const;
+  ACPP_COMMON_EXPORT void dump(std::ostream& ostr, int indentation_level=0) const;
 
   template<class T>
   void pack(T &pack) {
@@ -51,7 +52,7 @@ struct kernel_arg_entry {
     pack(was_specialized);
   }
 
-  void dump(std::ostream& ostr, int indentation_level=0) const;
+  ACPP_COMMON_EXPORT void dump(std::ostream& ostr, int indentation_level=0) const;
 };
 
 struct kernel_entry {
@@ -64,7 +65,7 @@ struct kernel_entry {
     pack(first_iads_invocation_run);
   }
 
-  void dump(std::ostream& ostr, int indentation_level=0) const;
+  ACPP_COMMON_EXPORT void dump(std::ostream& ostr, int indentation_level=0) const;
 
   std::vector<kernel_arg_entry> kernel_args;
   std::size_t num_registered_invocations = 0;
@@ -85,7 +86,7 @@ struct binary_entry {
     pack(jit_cache_filename);
   }
 
-  void dump(std::ostream& ostr, int indentation_level=0) const;
+  ACPP_COMMON_EXPORT void dump(std::ostream& ostr, int indentation_level=0) const;
 };
 
 struct appdb_data {
@@ -105,11 +106,11 @@ struct appdb_data {
     pack(content_version);
   }
 
-  void dump(std::ostream& ostr, int indentation_level=0) const;
+  ACPP_COMMON_EXPORT void dump(std::ostream& ostr, int indentation_level=0) const;
 };
 
 
-class appdb  {
+ACPP_COMMON_EXPORT class appdb  {
 public:
   // DO NOT FORGET TO INCREMENT THIS WHEN ADDING/REMOVING
   // FIELDS OR OTHERWISE CHANGING THE DATA LAYOUT!
