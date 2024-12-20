@@ -48,7 +48,7 @@ ACPP_COMMON_EXPORT bool atomic_write(const std::string& filename, const std::str
 /// Removes a file, returns true if successful.
 ACPP_COMMON_EXPORT bool remove(const std::string &filename);
 
-ACPP_COMMON_EXPORT class persistent_storage {
+class ACPP_COMMON_EXPORT persistent_storage {
 public:
   static persistent_storage& get();
 
