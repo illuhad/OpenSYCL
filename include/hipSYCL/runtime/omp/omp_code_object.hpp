@@ -29,14 +29,17 @@ public:
   // The kernel argument struct providing work-group information.
   struct work_group_info {
     work_group_info(rt::range<3> num_groups, rt::id<3> group_id,
-                    rt::range<3> local_size, void* local_memory)
+                    rt::range<3> local_size, void *local_memory,
+                    void *internal_local_memory)
         : _num_groups(num_groups), _group_id(group_id), _local_size(local_size),
-          _local_memory(local_memory) {}
+          _local_memory(local_memory),
+          _internal_local_memory(internal_local_memory) {}
 
     rt::range<3> _num_groups;
     rt::range<3> _group_id;
     rt::range<3> _local_size;
     void* _local_memory;
+    void* _internal_local_memory;
   };
 
   using omp_sscp_kernel = void(const work_group_info *, void **);

@@ -70,6 +70,11 @@ void list_device_details(rt::device_id dev, rt::backend *b,
   std::cout << " General device information:" << std::endl;
   print_info("Name", hw->get_device_name(), 2);
   print_info("Backend", b->get_name(), 2);
+  print_info("Platform",
+             "Backend " +
+                 std::to_string(static_cast<int>(b->get_unique_backend_id())) +
+                 " / Platform " + std::to_string(hw->get_platform_index()),
+             2);
   print_info("Vendor", hw->get_vendor_name(), 2);
   print_info("Arch", hw->get_device_arch(), 2);
   print_info("Driver version", hw->get_driver_version(), 2);

@@ -12,7 +12,8 @@
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceInferencePass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/common/filesystem.hpp"
 #include "hipSYCL/common/debug.hpp"
 #include <llvm/IR/DataLayout.h>
@@ -153,7 +154,7 @@ public:
       Invocation.push_back("-fno-hip-fp32-correctly-rounded-divide-sqrt");
     }
     
-    if(!llvm::StringRef{ClangPath}.endswith("hipcc")) {
+    if(!llvmutils::ends_with(llvm::StringRef{ClangPath}, "hipcc")) {
       // Normally we try to use hipcc. However, when that fails,
       // we may have fallen back to clang. In that case we may
       // have to additionally set --rocm-path and --rocm-device-lib-path.
@@ -208,16 +209,20 @@ public:
 };
 
 LLVMToAmdgpuTranslator::LLVMToAmdgpuTranslator(const std::vector<std::string> &KN)
-    : LLVMToBackendTranslator{sycl::jit::backend::amdgpu, KN, KN}, KernelNames{KN} {
+    : LLVMToBackendTranslator{static_cast<int>(sycl::AdaptiveCpp_jit::compiler_backend::amdgpu), KN, KN},
+      KernelNames{KN} {
   RocmDeviceLibsPath = common::filesystem::join_path(RocmPath,
                                                      std::vector<std::string>{"amdgcn", "bitcode"});
 }
 
-
 bool LLVMToAmdgpuTranslator::toBackendFlavor(llvm::Module &M, PassHandler& PH) {
   
   M.setTargetTriple(TargetTriple);
-#if LLVM_VERSION_MAJOR >= 17
+#if LLVM_VERSION_MAJOR >= 18
+  M.setDataLayout("e-p:64:64-p1:64:64-p2:32:32-p3:32:32-p4:64:64-p5:32:32-p6:32:32-p7:160:256:256:"
+                  "32-p8:128:128-p9:192:256:256:32-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:"
+                  "256-v256:256-v512:512-v1024:1024-v2048:2048-n32:64-S32-A5-G1-ni:7:8:9");
+#elif LLVM_VERSION_MAJOR >= 17
   M.setDataLayout(
       "e-p:64:64-p1:64:64-p2:32:32-p3:32:32-p4:64:64-p5:32:32-p6:32:32-p7:160:256:256:32-p8:128:128-"
       "i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-v2048:2048-"

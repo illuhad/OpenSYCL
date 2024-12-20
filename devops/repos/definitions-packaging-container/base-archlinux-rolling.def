@@ -1,8 +1,0 @@
-BootStrap: docker
-From: archlinux:base
-
-%setup
-
-%post
-pacman -Sy --noconfirm
-pacman -S --noconfirm grep

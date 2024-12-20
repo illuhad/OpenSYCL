@@ -15,11 +15,15 @@
 
 struct enable_unified_shared_memory {
   enable_unified_shared_memory() {
+#ifndef __ACPP_STDPAR_ASSUME_SYSTEM_USM__
     hipsycl::stdpar::unified_shared_memory::pop_disabled();
+#endif
   }
 
   ~enable_unified_shared_memory() {
+#ifndef __ACPP_STDPAR_ASSUME_SYSTEM_USM__
     hipsycl::stdpar::unified_shared_memory::push_disabled();
+#endif
   }
 };
 

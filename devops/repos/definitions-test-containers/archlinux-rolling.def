@@ -1,9 +1,0 @@
-BootStrap: docker
-From: archlinux:base
-
-%setup
-
-%post
-pacman -Syu --noconfirm
-pacman -Sy --noconfirm awk wget make base-devel
-

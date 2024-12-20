@@ -85,6 +85,13 @@ device_id cuda_hardware_manager::get_device_id(std::size_t index) const {
                    static_cast<int>(index)};
 }
 
+std::size_t cuda_hardware_manager::get_num_platforms() const {
+  return 1;
+}
+
+std::size_t cuda_hardware_context::get_platform_index() const {
+  return 0;
+}
 
 cuda_hardware_context::cuda_hardware_context(int dev) 
   : _dev{dev} {
@@ -358,6 +365,12 @@ cuda_hardware_context::get_property(device_uint_property prop) const {
     break;
   case device_uint_property::vendor_id:
     return 4318;
+    break;
+  case device_uint_property::architecture:
+    return _properties->major * 10 + _properties->minor;
+    break;
+  case device_uint_property::backend_id:
+    return static_cast<int>(backend_id::cuda);
     break;
   }
   assert(false && "Invalid device property");

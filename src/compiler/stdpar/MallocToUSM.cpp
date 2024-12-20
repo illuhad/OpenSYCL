@@ -10,6 +10,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/compiler/stdpar/MallocToUSM.hpp"
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 
 
 
@@ -71,7 +72,7 @@ bool NameStartsWithItaniumIdentifier(llvm::StringRef Name, llvm::StringRef Ident
 
 bool isRestrictedToRegularMalloc(llvm::Function* F) {
   llvm::StringRef Name = F->getName();
-  if(!Name.startswith("_Z"))
+  if(!llvmutils::starts_with(Name, "_Z"))
     return false;
   
   if(NameStartsWithItaniumIdentifier(Name, "hipsycl"))
@@ -82,7 +83,9 @@ bool isRestrictedToRegularMalloc(llvm::Function* F) {
 
 bool isStdFunction(llvm::Function* F) {
   llvm::StringRef Name = F->getName();
-  if(Name.startswith("_ZNSt") || Name.startswith("_ZSt") || Name.startswith("_ZNKSt"))
+  if(llvmutils::starts_with(Name, "_ZNSt") ||
+     llvmutils::starts_with(Name, "_ZSt") ||
+     llvmutils::starts_with(Name, "_ZNKSt"))
     return true;
   return false;
 }

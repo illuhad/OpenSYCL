@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # usage: acpp --help | ./cleanup_syclcchelp.sh
-# output is in sylccout then and should be copied into using-hipsycl.md
+# output is in sylccout then and should be copied into using-acpp.md
 
 sed "s/\[current value: .*\]/[current value: NOT SET]/g" > acppout
 

@@ -22,7 +22,7 @@
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/host/HostKernelWrapperPass.hpp"
 #include "hipSYCL/compiler/sscp/IRConstantReplacer.hpp"
-#include "hipSYCL/glue/llvm-sscp/s2_ir_constants.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -59,7 +59,8 @@ namespace hipsycl {
 namespace compiler {
 
 LLVMToHostTranslator::LLVMToHostTranslator(const std::vector<std::string> &KN)
-    : LLVMToBackendTranslator{sycl::jit::backend::host, KN, KN}, KernelNames{KN} {}
+    : LLVMToBackendTranslator{static_cast<int>(sycl::AdaptiveCpp_jit::compiler_backend::host), KN, KN},
+      KernelNames{KN} {}
 
 bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
 
@@ -100,7 +101,7 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
   registerCBSPipeline(MPM, hipsycl::compiler::OptLevel::O3, true);
 
   llvm::FunctionPassManager FPM;
-  FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize});
+  FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize, KnownGroupSizeX, KnownGroupSizeY, KnownGroupSizeZ});
   MPM.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(FPM)));
 
   MPM.run(M, *PH.ModuleAnalysisManager);

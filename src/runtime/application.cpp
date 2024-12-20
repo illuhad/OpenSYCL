@@ -56,6 +56,11 @@ async_error_list& application::errors() {
   return errors;
 }
 
+runtime_event_handlers& application::event_handler_layer() {
+  static runtime_event_handlers h;
+  return h;
+}
+
 
 }
 }

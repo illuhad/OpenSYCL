@@ -35,7 +35,7 @@ In order to compile software with AdaptiveCpp, use `acpp`. `acpp` can be used li
 
 `acpp` accepts both command line arguments and environment variables to configure its behavior (e.g., to select the target to compile for). See `acpp --help` for a comprehensive list of options.
 
-For details and instructions on using AdaptiveCpp in CMake projects, please see the documentation on [using AdaptiveCpp](doc/using-hipsycl.md).
+For details and instructions on using AdaptiveCpp in CMake projects, please see the documentation on [using AdaptiveCpp](doc/using-acpp.md).
 
 
 ## About the project
@@ -77,6 +77,7 @@ We gratefully acknowledge [contributions](https://github.com/illuhad/hipSYCL/gra
 * AdaptiveCpp [design and architecture](doc/architecture.md)
 * AdaptiveCpp runtime [specification](doc/runtime-spec.md)
 * AdaptiveCpp [compilation model](doc/compilation.md)
+* AdaptiveCpp [parallel algorithms library](doc/algorithms.md)
 * How to use raw HIP/CUDA inside AdaptiveCpp code to create [optimized code paths](doc/hip-source-interop.md)
 * A simple SYCL example code for testing purposes can be found [here](doc/examples.md).
 * [SYCL Extensions implemented in AdaptiveCpp](doc/extensions.md)

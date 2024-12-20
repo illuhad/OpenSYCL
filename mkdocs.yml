@@ -10,13 +10,14 @@ nav:
 
 
   - 'Usage' :
-      - 'Using AdaptiveCpp' : 'using-hipsycl.md'
+      - 'Using AdaptiveCpp' : 'using-acpp.md'
       - 'Compilation model' : 'compilation.md'
       - 'Env variables' : 'env_variables.md'
       - 'Performance guide' : 'performance.md'
       - 'Macros' : 'macros.md'
       - 'SYCL interoperability' : 'hip-source-interop.md'
       - 'C++ standard parallelism offloading (stdpar)' : 'stdpar.md'
+      - 'AdaptiveCpp parallel algorithms library' : 'algorithms.md'
 
   - 'AdaptiveCpp design' : 
       - 'Architecture' : 'architecture.md'

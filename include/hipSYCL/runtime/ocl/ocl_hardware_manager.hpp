@@ -57,6 +57,8 @@ public:
 
   virtual ~ocl_hardware_context();
 
+  virtual std::size_t get_platform_index() const override;
+
   ocl_allocator* get_allocator();
   ocl_usm* get_usm_provider();
 
@@ -86,6 +88,7 @@ public:
   virtual std::size_t get_num_devices() const override;
   virtual hardware_context *get_device(std::size_t index) override;
   virtual device_id get_device_id(std::size_t index) const override;
+  virtual std::size_t get_num_platforms() const override;
 
   virtual ~ocl_hardware_manager() {}
   

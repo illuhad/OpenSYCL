@@ -10,7 +10,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/sycl/libkernel/sscp/builtins/relational.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #define HIPSYCL_SSCP_MAP_HOST_REL_BUILTIN(name)                                \
   HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_##name##_f32(float x) {        \
@@ -29,8 +29,8 @@ HIPSYCL_SSCP_MAP_HOST_REL_BUILTIN(isfinite)
 HIPSYCL_SSCP_MAP_HOST_REL_BUILTIN(isnormal)
 
 HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_signbit_f32(float x) {
-  return signbit(x);
+  return std::signbit(x);
 }
 HIPSYCL_SSCP_BUILTIN __acpp_int32 __acpp_sscp_signbit_f64(double x) {
-  return signbit(x);
+  return std::signbit(x);
 }

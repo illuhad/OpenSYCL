@@ -10,6 +10,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/compiler/llvm-to-backend/GlobalInliningAttributorPass.hpp"
 
+#include <llvm/IR/Module.h>
+
 namespace hipsycl {
 namespace compiler {
 

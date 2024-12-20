@@ -23,8 +23,8 @@
  #undef SYCL_LANGUAGE_VERSION
 #endif
 
-#define CL_SYCL_LANGUAGE_VERSION 202003
-#define SYCL_LANGUAGE_VERSION 202003
+#define CL_SYCL_LANGUAGE_VERSION 202012L
+#define SYCL_LANGUAGE_VERSION 202012L
 #define SYCL_FEATURE_SET_FULL
 
 #include "hipSYCL/glue/persistent_runtime.hpp"
@@ -64,6 +64,7 @@
 #include "version.hpp"
 #include "types.hpp"
 #include "exception.hpp"
+#include "is_device_copyable.hpp"
 #include "device_selector.hpp"
 #include "device.hpp"
 #include "platform.hpp"
@@ -78,6 +79,7 @@
 #include "buffer_explicit_behavior.hpp"
 #include "specialized.hpp"
 #include "jit.hpp"
+#include "detail/namespace_compat.hpp"
 
 // Support SYCL_EXTERNAL for SSCP - we cannot have SYCL_EXTERNAL if accelerated CPU
 // is active at the same time :(

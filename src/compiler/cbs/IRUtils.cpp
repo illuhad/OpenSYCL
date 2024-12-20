@@ -27,6 +27,24 @@
 namespace hipsycl::compiler::utils {
 using namespace hipsycl::compiler::cbs;
 
+void replaceUsesOfGVWith(llvm::Function &F, llvm::StringRef GlobalVarName, llvm::Value *To, llvm::StringRef LogPrefix) {
+  auto M = F.getParent();
+  auto GV = M->getGlobalVariable(GlobalVarName);
+  if (!GV)
+    return;
+
+  HIPSYCL_DEBUG_INFO << LogPrefix << "RUOGVW: " << *GV << " with " << *To << "\n";
+  llvm::SmallVector<llvm::Instruction *> ToErase;
+  for (auto U : GV->users()) {
+    if (auto I = llvm::dyn_cast<llvm::LoadInst>(U); I && I->getFunction() == &F) {
+      HIPSYCL_DEBUG_INFO << LogPrefix << "RUOGVW: " << *I << " with " << *To << "\n";
+      I->replaceAllUsesWith(To);
+    }
+  }
+  for (auto I : ToErase)
+    I->eraseFromParent();
+}
+
 llvm::Loop *updateDtAndLi(llvm::LoopInfo &LI, llvm::DominatorTree &DT, const llvm::BasicBlock *B,
                           llvm::Function &F) {
   DT.reset();

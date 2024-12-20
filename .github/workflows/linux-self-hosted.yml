@@ -13,6 +13,9 @@ jobs:
         nvhpc_version: ['22.11']
     steps:
     - uses: actions/checkout@v4
+    - name: clear JIT cache
+      run: |
+        rm -rf ~/.acpp
     - name: build
       run : |
         mkdir build && cd build
@@ -60,6 +63,10 @@ jobs:
         echo "Running tests on CUDA..."
         cd ${GITHUB_WORKSPACE}/build/tests-cuda-emp
         ACPP_VISIBILITY_MASK="omp;cuda" ./sycl_tests
+    - name: run CUDA tests (SSCP)
+      run: |
+        cd ${GITHUB_WORKSPACE}/build/tests-sscp
+        ACPP_VISIBILITY_MASK="omp;cuda" ./sycl_tests
     - name: run PSTL CUDA tests (integrated multipass)
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-cuda
@@ -80,7 +87,7 @@ jobs:
     - name: run CPU tests (SSCP)
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
-        ACPP_VISIBILITY_MASK=omp LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ./sycl_tests -t '!group_functions_tests/*' -t '!extension_tests/*' -t '!kernel_invocation_tests/hierarchical*'
+        ACPP_VISIBILITY_MASK=omp LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/build/install/lib ./sycl_tests
     - name: run PSTL CPU tests (SSCP)
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
@@ -95,6 +102,9 @@ jobs:
         cuda: ['11.0'] # Just to be able to build the backend for explicit multipass
     steps:
     - uses: actions/checkout@v4
+    - name: clear JIT cache
+      run: |
+        rm -rf ~/.acpp
     - name: build
       run : |
         mkdir build && cd build
@@ -129,6 +139,11 @@ jobs:
         echo "Running tests on AMD..."
         cd ${GITHUB_WORKSPACE}/build/tests-rocm-emp
         ACPP_VISIBILITY_MASK="omp;hip" ./sycl_tests
+    - name: run ROCm tests (SSCP)
+      run: |
+        echo "Running tests on AMD..."
+        cd ${GITHUB_WORKSPACE}/build/tests-sscp
+        ACPP_VISIBILITY_MASK="omp;hip" ./sycl_tests
     - name: run PSTL ROCm tests (SSCP)
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
@@ -142,25 +157,29 @@ jobs:
         clang_version: ['15']
     steps:
     - uses: actions/checkout@v4
+    - name: clear JIT cache
+      run: |
+        rm -rf ~/.acpp
     - name: build
       run : |
         mkdir build && cd build
         cmake -DCMAKE_CXX_COMPILER=/usr/bin/clang++-${{matrix.clang_version}} -DCLANG_EXECUTABLE_PATH=/usr/bin/clang++-${{matrix.clang_version}} -DLLVM_DIR=/usr/lib/llvm-${{matrix.clang_version}}/cmake -DWITH_LEVEL_ZERO_BACKEND=ON -DWITH_OPENCL_BACKEND=ON -DCMAKE_INSTALL_PREFIX=`pwd`/install ..
         make -j3 install
     - name: build generic SSCP tests
-      if: matrix.clang_version >= 14
       run: |
         mkdir ${GITHUB_WORKSPACE}/build/tests-sscp
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
         cmake -DACPP_TARGETS="generic" -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp -DWITH_PSTL_TESTS=ON ${GITHUB_WORKSPACE}/tests
-        make pstl_tests -j3
+        make -j3
+    - name: run Intel tests (OpenCL)
+      run: |
+        cd ${GITHUB_WORKSPACE}/build/tests-sscp
+        LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ ACPP_VISIBILITY_MASK="omp;ocl:Graphics.*" ./sycl_tests
     - name: run PSTL Intel tests (L0)
-      if: matrix.clang_version >= 14
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
         ACPP_VISIBILITY_MASK="omp;ze" ./pstl_tests
     - name: run PSTL Intel tests (OpenCL)
-      if: matrix.clang_version >= 14
       run: |
         cd ${GITHUB_WORKSPACE}/build/tests-sscp
         LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ ACPP_VISIBILITY_MASK="omp;ocl:Graphics.*" ./pstl_tests

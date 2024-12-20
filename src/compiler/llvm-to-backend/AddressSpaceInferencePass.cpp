@@ -30,6 +30,7 @@
 #include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceInferencePass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/AddressSpaceMap.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 
 namespace hipsycl {
 namespace compiler {
@@ -132,10 +133,10 @@ llvm::PreservedAnalyses AddressSpaceInferencePass::run(llvm::Module &M,
             forEachUseOfPointerValue(AI, [&](llvm::Value* U){
               if(auto* CB = llvm::dyn_cast<llvm::CallBase>(U)) {
                 llvm::StringRef CalleeName = CB->getCalledFunction()->getName();
-                if(CalleeName.startswith("llvm.lifetime")) {
+                if(llvmutils::starts_with(CalleeName,"llvm.lifetime")) {
                   InstsToRemove.push_back(CB);
 
-                  llvm::Intrinsic::ID Id = CalleeName.startswith("llvm.lifetime.start")
+                  llvm::Intrinsic::ID Id = llvmutils::starts_with(CalleeName, "llvm.lifetime.start")
                                                ? llvm::Intrinsic::lifetime_start
                                                : llvm::Intrinsic::lifetime_end;
 

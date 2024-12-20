@@ -15,6 +15,7 @@
 
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/Module.h>
 
 namespace llvm {
 class Region;
@@ -58,6 +59,7 @@ static const std::array<const char *, 3> NumGroupsGlobalNames{
     NumGroupsGlobalNameX, NumGroupsGlobalNameY, NumGroupsGlobalNameZ};
 
 static constexpr const char SscpDynamicLocalMemoryPtrName[] = "__acpp_cbs_sscp_dynamic_local_memory";
+static constexpr const char SscpInternalLocalMemoryPtrName[] = "__acpp_cbs_sscp_internal_local_memory";
 } // namespace cbs
 
 static constexpr const char SscpAnnotationsName[] = "hipsycl.sscp.annotations";
@@ -77,6 +79,9 @@ template <class PtrSet> struct PtrSetWrapper {
   }
   auto begin() -> decltype(Set.begin()) { return Set.begin(); }
 };
+
+
+void replaceUsesOfGVWith(llvm::Function &F, llvm::StringRef GlobalVarName, llvm::Value *To, llvm::StringRef LogPrefix = "");
 
 llvm::Loop *updateDtAndLi(llvm::LoopInfo &LI, llvm::DominatorTree &DT, const llvm::BasicBlock *B,
                           llvm::Function &F);

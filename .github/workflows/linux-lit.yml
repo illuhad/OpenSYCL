@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        clang: [14, 15, 16, 17]
+        clang: [14, 15, 16, 17, 18]
         os: [ubuntu-22.04]
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        clang: [14, 15, 16, 17]
+        clang: [14, 15, 16, 17, 18]
         os: [ubuntu-22.04]
     steps:
       - uses: actions/checkout@v4

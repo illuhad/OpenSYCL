@@ -18,9 +18,13 @@ namespace compiler {
 
 class HostKernelWrapperPass : public llvm::PassInfoMixin<HostKernelWrapperPass> {
   std::int64_t DynamicLocalMemSize;
+  std::array<int, 3> KnownWgSize;
+
 public:
-  explicit HostKernelWrapperPass(std::int64_t DynamicLocalMemSize)
-      : DynamicLocalMemSize{DynamicLocalMemSize} {}
+  explicit HostKernelWrapperPass(std::int64_t DynamicLocalMemSize, int KnownGroupSizeX,
+                                 int KnownGroupSizeY, int KnownGroupSizeZ)
+      : DynamicLocalMemSize{DynamicLocalMemSize},
+        KnownWgSize{KnownGroupSizeX, KnownGroupSizeY, KnownGroupSizeZ} {}
 
   llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
   static bool isRequired() { return true; }

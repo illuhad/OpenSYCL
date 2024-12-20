@@ -17,10 +17,10 @@
 namespace hipsycl {
 namespace rt {
 
-ocl_allocator::ocl_allocator(ocl_usm* usm)
-: _usm{usm} {}
+ocl_allocator::ocl_allocator(rt::device_id dev, ocl_usm* usm)
+: _dev{dev}, _usm{usm} {}
 
-void* ocl_allocator::allocate(size_t min_alignment, size_t size_bytes) {
+void* ocl_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",
@@ -40,7 +40,7 @@ void* ocl_allocator::allocate(size_t min_alignment, size_t size_bytes) {
   return ptr;
 }
 
-void *ocl_allocator::allocate_optimized_host(size_t min_alignment,
+void *ocl_allocator::raw_allocate_optimized_host(size_t min_alignment,
                                              size_t bytes) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
@@ -60,7 +60,7 @@ void *ocl_allocator::allocate_optimized_host(size_t min_alignment,
   return ptr;
 }
 
-void ocl_allocator::free(void *mem) {
+void ocl_allocator::raw_free(void *mem) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",
@@ -76,7 +76,7 @@ void ocl_allocator::free(void *mem) {
   }
 }
 
-void *ocl_allocator::allocate_usm(size_t bytes) {
+void *ocl_allocator::raw_allocate_usm(size_t bytes) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",
@@ -101,6 +101,10 @@ bool ocl_allocator::is_usm_accessible_from(backend_descriptor b) const {
   // Probably, we should change this function to accept a device_id.
   // Or just remove this function entirely, as it does not seem to be used?
   return b.hw_platform == hardware_platform::ocl;
+}
+
+device_id ocl_allocator::get_device() const {
+  return _dev;
 }
 
 result ocl_allocator::query_pointer(const void* ptr, pointer_info& out) const {

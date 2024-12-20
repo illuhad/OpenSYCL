@@ -50,7 +50,12 @@ struct find_if_not {};
 struct all_of {};
 struct any_of {};
 struct none_of {};
-
+struct sort {};
+struct merge {};
+struct inclusive_scan {};
+struct exclusive_scan {};
+struct transform_inclusive_scan {};
+struct transform_exclusive_scan {};
 struct transform_reduce {};
 struct reduce {};
 } // namespace algorithm_type

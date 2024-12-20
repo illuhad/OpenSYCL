@@ -19,6 +19,7 @@
 #include "hipSYCL/compiler/CompilationState.hpp"
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
 #include "hipSYCL/compiler/utils/ProcessFunctionAnnotationsPass.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/common/hcf_container.hpp"
 
 #include <cstddef>
@@ -98,13 +99,18 @@ public:
 
 static llvm::cl::opt<bool> SSCPEmitHcf{
     "acpp-sscp-emit-hcf", llvm::cl::init(false),
-    llvm::cl::desc{"Emit HCF from hipSYCL LLVM SSCP compilation flow"}};
+    llvm::cl::desc{"Emit HCF from AdaptiveCpp LLVM SSCP compilation flow"}};
 
 static llvm::cl::opt<bool> PreoptimizeSSCPKernels{
     "acpp-sscp-preoptimize", llvm::cl::init(false),
     llvm::cl::desc{
         "Preoptimize SYCL kernels in LLVM IR instead of embedding unoptimized kernels and relying "
-        "on optimization at runtime. This is mainly for hipSYCL developers and NOT supported!"}};
+        "on optimization at runtime. This is mainly for AdaptiveCpp developers and NOT supported!"}};
+
+static llvm::cl::opt<bool> ExportAllSymbols{
+    "acpp-sscp-export-all", llvm::cl::init(false),
+    llvm::cl::desc{
+        "(experimental) export all functions for JIT-time linking"}};
 
 static const char *SscpIsHostIdentifier = "__acpp_sscp_is_host";
 static const char *SscpIsDeviceIdentifier = "__acpp_sscp_is_device";
@@ -278,7 +284,7 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
     }
   }
 
-  EntrypointPreparationPass EPP;
+  EntrypointPreparationPass EPP{ExportAllSymbols};
   EPP.run(*DeviceModule, DeviceMAM);
   
   ExportedSymbolsOutput = EPP.getNonKernelOutliningEntrypoints();
@@ -317,7 +323,7 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
       // if they are not defined, not an intrinsic and don't start with
       // __ like our hipSYCL builtins. This is a hack, it would
       // be better if we could tell clang to annotate the declaration for us :(
-      if(!F.isIntrinsic() && !F.getName().startswith("__"))
+      if(!F.isIntrinsic() && !llvmutils::starts_with(F.getName(), "__"))
         ImportedSymbolsOutput.push_back(F.getName().str());
     }
   }

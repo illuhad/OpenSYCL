@@ -58,7 +58,7 @@ ze_backend::ze_backend() {
 
   _hardware_manager = std::make_unique<ze_hardware_manager>();
   for(std::size_t i = 0; i < _hardware_manager->get_num_devices(); ++i) {
-    _allocators.push_back(ze_allocator{
+    _allocators.push_back(ze_allocator{i,
         static_cast<ze_hardware_context *>(_hardware_manager->get_device(i)),
         _hardware_manager.get()});
   }

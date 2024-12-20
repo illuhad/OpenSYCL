@@ -11,6 +11,7 @@
 #include "hipSYCL/compiler/cbs/LoopSplitterInlining.hpp"
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
 #include "hipSYCL/compiler/cbs/SplitterAnnotationAnalysis.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 
 #include "hipSYCL/common/debug.hpp"
 
@@ -119,7 +120,8 @@ bool fillTransitiveSplitterCallers(llvm::Function &F,
   std::transform(F.begin(), F.end(), std::back_inserter(Blocks), [](auto &BB) { return &BB; });
 
   if (fillTransitiveSplitterCallers(Blocks, SAA, FuncsWSplitter,
-                                    InIntrinsic || F.getName().startswith("__acpp_sscp"))) {
+                                    InIntrinsic ||
+				    hipsycl::llvmutils::starts_with(F.getName(), "__acpp_sscp"))) {
     FuncsWSplitter.insert(&F);
     return true;
   }

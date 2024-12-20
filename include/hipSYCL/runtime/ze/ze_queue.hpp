@@ -18,6 +18,7 @@
 #include "../executor.hpp"
 #include "../inorder_queue.hpp"
 #include "hipSYCL/glue/llvm-sscp/jit.hpp"
+#include "hipSYCL/glue/llvm-sscp/jit-reflection/reflection_map.hpp"
 #include "hipSYCL/runtime/code_object_invoker.hpp"
 #include "hipSYCL/runtime/event.hpp"
 #include "hipSYCL/runtime/hints.hpp"
@@ -107,6 +108,7 @@ private:
   // SSCP submission data
   glue::jit::cxx_argument_mapper _arg_mapper;
   kernel_configuration _config;  
+  glue::jit::reflection_map _reflection_map;
 };
 
 }

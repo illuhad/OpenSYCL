@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(acpp-clang)
 
 get_filename_component(CLANG_BINARY_PREFIX ${CLANG_EXECUTABLE_PATH} DIRECTORY)
@@ -36,13 +36,13 @@ if(WITH_ACCELERATED_CPU OR WITH_SSCP_COMPILER)
   add_library(acpp-clang-cbs OBJECT
     ${CBS_PLUGIN}
   )
-  
+
   set_property(TARGET acpp-clang-cbs PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
 if(WITH_SSCP_COMPILER)
   set(WITH_REFLECTION_BUILTINS ON)
-  set(SSCP_COMPILER 
+  set(SSCP_COMPILER
     sscp/KernelOutliningPass.cpp
     sscp/IRConstantReplacer.cpp
     sscp/DynamicFunctionSupport.cpp
@@ -75,7 +75,7 @@ else()
   set(REFLECTION_BUILTINS "")
 endif()
 
-add_library(acpp-clang SHARED
+add_library(acpp-clang MODULE
   AdaptiveCppClangPlugin.cpp
   GlobalsPruningPass.cpp
   ${SSCP_COMPILER}
@@ -102,8 +102,11 @@ function(configure_target)
     ${CMAKE_BINARY_DIR}/include)
   target_include_directories(${target} SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
 
+  separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
   target_compile_definitions(${target} PRIVATE
-    ${LLVM_DEFINITIONS} -DHIPSYCL_COMPILER_COMPONENT)
+    ${LLVM_DEFINITIONS_LIST})
+  target_compile_definitions(${target} PRIVATE
+    -DHIPSYCL_COMPILER_COMPONENT)
 
   if(ROCM_VERSION_MAJOR)
     target_compile_definitions(${target} PRIVATE -DROCM_CLANG_VERSION_MAJOR=${ROCM_VERSION_MAJOR} -DROCM_CLANG_VERSION_MINOR=${ROCM_VERSION_MINOR} -DROCM_CLANG_VERSION_PATCH=${ROCM_VERSION_PATCH})

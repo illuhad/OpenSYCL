@@ -21,8 +21,9 @@ namespace detail {
 
 static std::string version_string()
 {
+  std::string zero = (ACPP_VERSION_MINOR < 10 ? "0" : "");
   std::string version = std::to_string(ACPP_VERSION_MAJOR)
-      + "." + std::to_string(ACPP_VERSION_MINOR)
+      + "." + zero + std::to_string(ACPP_VERSION_MINOR)
       + "." + std::to_string(ACPP_VERSION_PATCH)
       + std::string(ACPP_VERSION_SUFFIX);
 

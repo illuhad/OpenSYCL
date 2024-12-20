@@ -153,6 +153,8 @@ class queue : public detail::property_carrying_object
 
     // Prevents kernel cache from becoming invalid while we have a queue
     std::shared_ptr<rt::kernel_cache> kernel_cache;
+    // For non-emulated in-order queues only
+    std::atomic<bool> has_non_instant_operations = false;
   };
 
   template<typename, int, access::mode, access::target>
@@ -188,11 +190,12 @@ public:
       : queue{detail::select_devices(deviceSelector), asyncHandler, propList} {}
 
   explicit queue(const device &syclDevice, const property_list &propList = {})
-      : queue{context{syclDevice}, std::vector<device>{syclDevice}, propList} {}
+      : queue{get_default_context(syclDevice), std::vector<device>{syclDevice},
+              propList} {}
 
   explicit queue(const device &syclDevice, const async_handler &asyncHandler,
                  const property_list &propList = {})
-      : queue{context{syclDevice, asyncHandler}, std::vector<device>{syclDevice},
+      : queue{get_default_context(syclDevice), std::vector<device>{syclDevice},
               asyncHandler, propList} {}
 
   template <
@@ -229,10 +232,10 @@ public:
   explicit queue(const std::vector<device> &devices,
                  const async_handler &handler,
                  const property_list &propList = {})
-      : queue{context{devices, handler}, devices, handler, propList} {}
+      : queue{get_default_context(devices), devices, handler, propList} {}
 
   explicit queue(const std::vector<device>& devices, const property_list& propList = {})
-    : queue{context{devices}, devices, propList} {}
+    : queue{get_default_context(devices), devices, propList} {}
 
   explicit queue(const context &syclContext, const std::vector<device> &devices,
                  const property_list &propList = {})
@@ -355,7 +358,8 @@ public:
         assert(exec);
         // Need to ensure everything is submitted before waiting on the stream
         // in case we have non-instant operations
-        _impl->requires_runtime.get()->dag().flush_sync();
+        if(_impl->has_non_instant_operations.load(std::memory_order_relaxed))
+          _impl->requires_runtime.get()->dag().flush_sync();
         
         auto err = exec->wait();
         if(!err.is_success()) {
@@ -1020,6 +1024,20 @@ public:
     return AdaptiveCpp_inorder_executor();
   }
 private:
+  static context get_default_context(const device& dev) {
+    return context{detail::default_context_tag_t{}, dev.get_platform()};
+  }
+
+  static context get_default_context(const std::vector<device> &devices) {
+    if(devices.empty())
+      return context{detail::default_context_tag_t{}};
+    if(devices.size() == 1){
+      return context{detail::default_context_tag_t{}, devices[0].get_platform()};
+    } else {
+      return context{detail::default_context_tag_t{}, devices};
+    }
+  }
+
   template<int Dim>
   void apply_preferred_group_size(const property_list& prop_list, handler& cgh) {
     if(prop_list.has_property<property::command_group::AdaptiveCpp_prefer_group_size<Dim>>()){
@@ -1047,6 +1065,7 @@ private:
       if(_impl->needs_in_order_emulation) {
         _impl->previous_submission = node;
       } else if(cgh.contains_non_instant_nodes()) {
+        _impl->has_non_instant_operations.store(true, std::memory_order_relaxed);
         // If we have instant submission enabled, non-emulated in-order queue
         // but non-instant tasks, we need to flush the dag, otherwise future instant
         // tasks might not wait on the tasks that have been cached in the dag

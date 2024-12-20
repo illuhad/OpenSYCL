@@ -1,8 +1,0 @@
-BootStrap: localimage
-From: base-ubuntu-18.04.sif
-
-%setup
-cp ./install-hipsycl.sh ${SINGULARITY_ROOTFS}/install-hipsycl.sh
-
-%post
-sh /install-hipsycl.sh

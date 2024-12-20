@@ -35,13 +35,12 @@ void test_copy_if(std::size_t problem_size, Generator&& gen) {
 
   auto ret = std::copy_if(std::execution::par_unseq, data.begin(), data.end(),
                           dest_device.begin(), p);
-  std::copy_if(data.begin(), data.end(), dest_host.begin(), p);
+  auto ret_reference = std::copy_if(data.begin(), data.end(), dest_host.begin(), p);
 
-  BOOST_CHECK(ret == dest_device.begin() + problem_size);
-  // Our copy_if implementation is currently incorrect, since
-  // we always copy results to the same position (we would
-  // actually need to run a scan algorithm to find the right place)
-  //BOOST_CHECK(dest_device == dest_host);
+  BOOST_CHECK(std::distance(dest_device.begin(), ret) ==
+              std::distance(dest_host.begin(), ret_reference));
+
+  BOOST_CHECK(dest_device == dest_host);
 }
 
 BOOST_AUTO_TEST_CASE(par_unseq_empty) {

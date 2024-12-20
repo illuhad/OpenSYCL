@@ -93,7 +93,9 @@ enum class device_uint_property {
   printf_buffer_size,
   partition_max_sub_devices,
 
-  vendor_id
+  vendor_id,
+  architecture,
+  backend_id
 };
 
 enum class device_uint_list_property {
@@ -125,6 +127,8 @@ public:
 
   virtual std::string get_driver_version() const = 0;
   virtual std::string get_profile() const = 0;
+
+  virtual std::size_t get_platform_index() const= 0;
   
   virtual ~hardware_context(){}
 };
@@ -133,6 +137,8 @@ class backend_hardware_manager
 {
 public:
   virtual std::size_t get_num_devices() const = 0;
+  virtual std::size_t get_num_platforms() const = 0;
+
   virtual hardware_context *get_device(std::size_t index) = 0;
   virtual device_id get_device_id(std::size_t index) const = 0;
 

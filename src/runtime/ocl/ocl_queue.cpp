@@ -125,6 +125,8 @@ ocl_queue::ocl_queue(ocl_hardware_manager* hw_manager, std::size_t device_index)
                    error_info{"ocl_queue: Couldn't construct backend queue",
                               error_code{"CL", err}});
   }
+
+  _reflection_map = glue::jit::construct_default_reflection_map(dev_ctx);
 }
 
 ocl_queue::~ocl_queue() {}
@@ -517,10 +519,11 @@ result ocl_queue::submit_sscp_kernel_from_code_object(
     if(kernel_names.size() == 1) {
       err = glue::jit::dead_argument_elimination::compile_kernel(
           translator.get(), hcf_object, selected_image_name, _config,
-          binary_configuration_id, compiled_image);
+          binary_configuration_id, _reflection_map, compiled_image);
     } else {
-      err = glue::jit::compile(translator.get(),
-        hcf_object, selected_image_name, _config, compiled_image);
+      err =
+          glue::jit::compile(translator.get(), hcf_object, selected_image_name,
+                             _config, _reflection_map, compiled_image);
     }
     
     if(!err.is_success()) {

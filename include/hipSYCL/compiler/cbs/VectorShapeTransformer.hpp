@@ -18,6 +18,7 @@
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/DataLayout.h>
 
 namespace hipsycl::compiler {
 using SmallValVec = llvm::SmallVector<const llvm::Value *, 2>;

@@ -4,6 +4,165 @@ AdaptiveCpp implements several extensions that are not defined by the specificat
 
 ## Supported extensions
 
+### `ACPP_EXT_RESTRICT_PTR`
+
+Provides a wrapper type that hints to the compiler that a pointer kernel argument does not alias other pointer arguments.
+*Note:* This currently only has an effect with AdaptiveCpp's generic JIT compiler (`--acpp-targets=generic`), other compilation flows ignore this hint.
+
+Example:
+
+```c++
+
+sycl::queue q;
+float* data = ...
+sycl::AdaptiveCpp_restrict_ptr<float> restrict_data = data;
+
+q.parallel_for(range, [=](auto idx){
+  // Converts implicitly to the underlying pointer type - float* in this
+  // example.
+  restrict_data[idx] *= 1.5f;
+});
+```
+
+### `ACPP_EXT_JIT_COMPILE_IF`
+
+Allows for specializing code based on target properties only known at JIT time. This is only supported with AdaptiveCpp's default generic JIT compiler (`--acpp-targets=generic`).
+If you also want to support other compilation flows, use of the following APIs must
+be guarded using `__acpp_if_target_sscp()`.
+
+#### Example
+```c++
+namespace jit = sycl::AdaptiveCpp_jit;
+
+__acpp_if_target_sscp(
+  jit::compile_if(
+    jit::reflect<jit::reflection_query::target_vendor_id>() == 
+      jit::vendor_id::nvidia,
+    [](){
+      // Will only be included in the JIT-compiled kernel if the target is NVIDIA hardware.
+      // The branching will be evaluated at JIT-time; there will be no runtime overhead
+      // in the generated kernel.
+      //
+      // As such, this mechanism can also be used to guard code that is unsupported or
+      // does not compile correctly on other hardware.
+    });
+);
+
+```
+
+#### API reference
+
+```c++
+namespace sycl::AdaptiveCpp_jit {
+
+/// JIT reflection API
+
+enum class compiler_backend : int {
+  spirv,
+  ptx,
+  amdgpu,
+  host
+};
+
+namespace vendor_id {
+
+// These vendor ids are provided for convenience since
+// they frequently occur; this list is non-exclusive; other
+// vendor_id values might be returned by JIT reflection APIs.
+inline constexpr int nvidia;
+inline constexpr int amd;
+inline constexpr int intel;
+}
+
+///
+/// This namespace defines properties that the JIT compiler can be queried for.
+namespace reflection_query {
+
+/// Vendor id of the target hardware
+/// Return type: int
+struct target_vendor_id;
+
+/// Returns a numeric identifier for the target architecture. For NVIDIA GPUs, this
+/// is the SM architecture (e.g. 86 for sm_86). For AMD GPUs, it is the amdgcn architecture
+/// as an hexadecimal number (e.g. 0x90c for gfx90c).
+/// For other hardware, the query currently returns 0.
+/// Return type: int
+struct target_arch;
+
+/// Returns whether the hardware has independent forward progress for each work item.
+/// Return type: bool
+struct target_has_independent_forward_progress;
+
+/// Returns whether the target is a CPU.
+/// Return type: bool
+struct target_is_cpu;
+
+/// Returns whether the target is a GPU.
+/// Return type: bool
+struct target_is_gpu;
+
+/// Returns the AdaptiveCpp runtime backend that is managing the execution of this kernel.
+/// Return type: int (sycl::backend cast to int)
+struct runtime_backend;
+
+/// Returns the AdaptiveCpp runtime backend that is managing the execution of this kernel.
+/// Return type: compiler_backend
+struct compiler_backend;
+}
+
+/// Evaluates at JIT-time the specified query. Query must be one of the types
+/// defined in AdaptiveCpp_jit::property.
+/// The compiler replaces calls to this function with the return value at JIT-time;
+/// Calls to this function will not remain in the final generated code and not cause runtime
+/// overhead.
+template<class Query>
+auto reflect();
+
+/// Evaluates at JIT-time whether the JIT reflection mechanism supports the specified query.
+/// Currently, all of the queries listed above are supported universally, but in the future
+/// queries might be added that are only supported for certain backends.
+///
+/// Query must be one of the types defined in AdaptiveCpp_jit::property.
+///
+/// The compiler replaces calls to this function with the return value at JIT-time;
+/// Calls to this function will not remain in the final generated code and not cause runtime
+/// overhead.
+template<class Query>
+bool knows();
+
+
+/// Code-generates the callable f only if condition evaluates to true at JIT time.
+///
+/// condition must evaluate to a value known at JIT time, either using compile-time
+/// values or return values from the JIT reflection API.
+///
+/// Because the condition is evaluated at JIT time, no runtime overhead
+/// will be present in the compiled kernel due to branching.
+///
+/// The signature of f is void().
+template<class F>
+void compile_if(bool condition, F&& f);
+
+/// Code-generates the callable if_branch only if condition evaluates to true at JIT time.
+/// Otherwise, the callable else_branch is code-generated.
+///
+/// condition must evaluate to a constant at JIT time, either using compile-time
+/// constants or return values from the JIT reflection API.
+///
+/// Because the condition is evaluated at JIT time, no runtime overhead
+/// will be present in the compiled kernel due to branching.
+///
+/// The signature of if_branch and else_branch is T() for arbitrary types T.
+///
+/// \return If T is not void, compile_if_else() returns the value returned by the
+/// user-provided callable that is invoked.
+template<class F, class G>
+auto compile_if_else(bool condition, F&& if_branch, G&& else_branch);
+
+}
+
+```
+
 ### `ACPP_EXT_DYNAMIC_FUNCTIONS`
 
 This extension allows users to provide functions used in kernels with definitions selected at runtime. We call such functions *dynamic functions*, since their definition will be determined at runtime using the JIT compiler. Once a kernel using dynamic functions has been JIT-compiled, there are no runtime overheads as dynamic functions are hardwired at JIT-time.
@@ -33,7 +192,7 @@ int main() {
   sycl::queue q;
 
   // The dynamic_function_config object stores the JIT-time function mapping information.
-  sycl::jit::dynamic_function_config dyn_function_config;
+  sycl::AdaptiveCpp_jit::dynamic_function_config dyn_function_config;
   // Requests calls to execute_operations to be replaced at JIT time
   // with {myfunction1(idx); myfunction2(idx);}
   dyn_function_config.define_as_call_sequence(&execute_operations, {&myfunction1, &myfunction2});
@@ -54,7 +213,7 @@ The AdaptiveCpp runtime maintains a kernel cache that automatically distinguishe
 * It is the user's responsibility to ensure that the `dynamic_function_config` object is kept alive at least until all kernels using it have completed.
 * `dynamic_function_config` is not thread-safe; if one object is shared across multiple threads, it is the user's responsibility to ensure appropriate synchronization.
 * With this extension, the user can exchange kernel code at runtime. This means that in general, the compiler cannot know at compile time anymore which parts of the code need to be part of device code. Therefore, functions  providing the definitions have to be marked as `SYCL_EXTERNAL` to ensure that they are emitted to device code. This can be omitted if the function is invoked from the kernel already at compile time.
-* It is possible to provide a "default definition" for dynamic functions by not just declaring them, but also providing a definition (e.g. in the example above, provide a definition for `execute_operations`). However, in this case, we recommend that the function is marked with `__attribute__((noinline))`. Otherwise, in some cases the compiler might decide to already inline the function early on during the optimization process -- and once, inlined, the JIT compiler no loner sees the function and therefore can no longer find function calls to replace. The `noinline` attribute will have no performance implications once the replacement function definition has been put in place by the JIT compiler. Additionally, if the default function does not actually use the function arguments, the frontend might not actually emit function calls to the dynamic function. It is thus a good idea to use `sycl::jit::arguments_are_used()` to assert that these arguments might e.g. be used by a dynamic function replacement function.
+* It is possible to provide a "default definition" for dynamic functions by not just declaring them, but also providing a definition (e.g. in the example above, provide a definition for `execute_operations`). However, in this case, we recommend that the function is marked with `__attribute__((noinline))`. Otherwise, in some cases the compiler might decide to already inline the function early on during the optimization process -- and once, inlined, the JIT compiler no loner sees the function and therefore can no longer find function calls to replace. The `noinline` attribute will have no performance implications once the replacement function definition has been put in place by the JIT compiler. Additionally, if the default function does not actually use the function arguments, the frontend might not actually emit function calls to the dynamic function. It is thus a good idea to use `sycl::AdaptiveCpp_jit::arguments_are_used()` to assert that these arguments might e.g. be used by a dynamic function replacement function.
 
 With a default function definition, the example above might look like so:
 ```c++
@@ -70,7 +229,7 @@ __attribute__((noinline))
 void execute_operations(int* data, sycl::item<1> idx) {
   // This prevents the compiler from removing calls to execute_operations if it
   // sees that the function cannot actually have any side-effects.
-  sycl::jit::arguments_are_used(data, idx);
+  sycl::AdaptiveCpp_jit::arguments_are_used(data, idx);
 }
 
 int main() {
@@ -78,7 +237,7 @@ int main() {
   int* data = ...;
 
   // The dynamic_function_config object stores the JIT-time function mapping information.
-  sycl::jit::dynamic_function_config dyn_function_config;
+  sycl::AdaptiveCpp_jit::dynamic_function_config dyn_function_config;
   // Requests calls to execute_operations to be replaced at JIT time
   // with {myfunction1(idx); myfunction2(idx);}
   // If this is removed, the regular function definition of execute_operations

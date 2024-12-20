@@ -95,7 +95,14 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_submit>();
     auto t13 =
         evt1.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t11 <= t12 && t12 <= t13);
+    // We cannot test that submit time is <= command start time, since
+    // in some backends (e.g. CUDA) time is only measured as elapsed time
+    // between two points in low-precision float. Submission time on the other
+    // hand is always exact. So there might be rounding errors causing
+    // t12 > t11.
+    // The same thing could in principle happen when comparing submission time
+    // with command end time, but hopefully this is less likely.
+    BOOST_CHECK(t11 <= t13 && t12 <= t13);
 
     auto evt2 = queue.submit([&](cl::sycl::handler &cgh) {
       auto acc = buf1.get_access<cl::sycl::access::mode::discard_write>(cgh);
@@ -116,7 +123,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t23 =
         evt2.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t21 <= t22 && t22 <= t23);
+    BOOST_CHECK(t21 <= t23 && t22 <= t23);
 
     auto t31 = evt3.get_profiling_info<
         cl::sycl::info::event_profiling::command_submit>();
@@ -124,7 +131,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t33 =
         evt3.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t31 <= t32 && t32 <= t33);
+    BOOST_CHECK(t31 <= t33 && t32 <= t33);
     BOOST_CHECK(t21 <= t31 && t23 <= t32);
 
     auto evt4 = queue.submit([&](cl::sycl::handler &cgh) {
@@ -143,7 +150,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t53 =
         evt5.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t51 <= t52 && t52 <= t53);
+    BOOST_CHECK(t51 <= t53 && t52 <= t53);
 
     // re-ordered
     auto t41 = evt4.get_profiling_info<
@@ -152,7 +159,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t43 =
         evt4.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t41 <= t42 && t42 <= t43);
+    BOOST_CHECK(t41 <= t43 && t42 <= t43);
 
     // usm
     auto *src = cl::sycl::malloc_shared<int>(n, queue);
@@ -166,7 +173,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t63 =
         evt6.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t61 <= t62 && t62 <= t63);
+    BOOST_CHECK(t61 <= t63 && t62 <= t63);
 
     auto evt7 = queue.submit(
         [&](cl::sycl::handler &cgh) { cgh.memcpy(dest, src, sizeof src); });
@@ -176,7 +183,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
         cl::sycl::info::event_profiling::command_start>();
     auto t73 =
         evt7.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
-    BOOST_CHECK(t71 <= t72 && t72 <= t73);
+    BOOST_CHECK(t71 <= t73 && t72 <= t73);
 
     auto evt8 = queue.submit(
         [&](cl::sycl::handler &cgh) { cgh.prefetch(dest, sizeof src); });
@@ -187,7 +194,7 @@ BOOST_AUTO_TEST_CASE(queue_profiling)
     auto t83 =
         evt8.get_profiling_info<cl::sycl::info::event_profiling::command_end>();
     // run time may be zero if prefetching is a no-op
-    BOOST_CHECK(t81 <= t82 && t82 <= t83);
+    BOOST_CHECK(t81 <= t83 && t82 <= t83);
 
     cl::sycl::free(src, queue);
     cl::sycl::free(dest, queue);
