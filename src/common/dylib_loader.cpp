@@ -109,8 +109,7 @@ void *get_symbol_from_library(void *handle, const std::string &symbolName,
     return reinterpret_cast<void *>(symbol);
   } else {
     DWORD errorCode = GetLastError();
-    message = std::string(loader) +
-              ": Could not find symbol name: " + symbolName +
+    message = "Could not find symbol name: " + symbolName +
               " with: " + format_win32_error(errorCode) + " (" +
               std::to_string(errorCode) + ")";
   }
