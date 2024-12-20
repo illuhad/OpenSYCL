@@ -78,7 +78,7 @@ function(create_llvm_to_backend_library)
   set(MODE STATIC)
   endif()
   create_llvm_based_library(TARGET ${target} ${MODE} SOURCES ${sources})
-  target_link_libraries(${target} PUBLIC llvm-to-backend acpp-common)
+  target_link_libraries(${target} PUBLIC llvm-to-backend)
 endfunction()
 
 function(create_llvm_to_backend_tool)
@@ -151,7 +151,16 @@ if(WITH_SSCP_COMPILER)
       GlobalInliningAttributorPass.cpp
       DeadArgumentEliminationPass.cpp
       ProcessS2ReflectionPass.cpp
-      ../sscp/KernelOutliningPass.cpp)
+      ../sscp/KernelOutliningPass.cpp
+      Utils.cpp
+      )
+
+  target_compile_definitions(llvm-to-backend PRIVATE
+    -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
+  )
+  target_link_libraries(llvm-to-backend PUBLIC
+    acpp-common
+  )
 
   if(WITH_LLVM_TO_SPIRV)
     add_hipsycl_llvm_backend(
@@ -198,7 +207,6 @@ if(WITH_SSCP_COMPILER)
       TOOL ptx/LLVMToPtxTool.cpp)
 
     target_compile_definitions(llvm-to-ptx PRIVATE
-      -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_CUDA_PATH="${CUDA_TOOLKIT_ROOT_DIR}")
   endif()
 
@@ -216,8 +224,6 @@ if(WITH_SSCP_COMPILER)
       target_compile_definitions(llvm-to-amdgpu PRIVATE
         -DACPP_HIPCC_PATH="${HIPCC_PATH}")
     endif()
-    target_compile_definitions(llvm-to-amdgpu PRIVATE
-        -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}")
 
     find_library(HIPRTC_LIBRARY hiprtc HINTS ${ROCM_PATH}/lib)
    
@@ -253,7 +259,6 @@ if(WITH_SSCP_COMPILER)
       TOOL host/LLVMToHostTool.cpp)
 
     target_compile_definitions(llvm-to-host PRIVATE
-      -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_HOST_CPU_FLAG="${HOST_CPU_FLAG}")
     target_link_libraries(llvm-to-host PRIVATE acpp-clang-cbs)
   endif()

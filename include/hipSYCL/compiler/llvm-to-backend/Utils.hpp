@@ -344,16 +344,7 @@ private:
   llvm::SmallDenseMap<llvm::Type*, llvm::Type*> PointerWrapperTypes;
 };
 
-inline std::string getClangPath() {
-  std::string path(ACPP_CLANG_PATH);
-  auto pos = path.find("$ACPP_PATH");
-  while(pos != std::string::npos){
-    const auto install_dir = common::filesystem::get_install_directory();
-    path.replace(pos, std::string_view("$ACPP_PATH").size(), install_dir);
-    pos = path.find("$ACPP_PATH");
-  }
-  return path;
-}
+std::string getClangPath();
 
 }
 }
