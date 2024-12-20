@@ -88,25 +88,14 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
     return false;
 
   llvm::ModulePassManager MPM;
-  // TODO: Clean me up.
-  // PH.ModuleAnalysisManager->clear(); // for some reason we need to reset the analyses... otherwise
-  //                                    // we get a crash at IPSCCP
-
-  llvm::LoopAnalysisManager LAM;
-  llvm::FunctionAnalysisManager FAM;
-  llvm::CGSCCAnalysisManager CGAM;
-  llvm::ModuleAnalysisManager MAM;
+  PH.ModuleAnalysisManager->clear(); // for some reason we need to reset the analyses... otherwise
+                                     // we get a crash at IPSCCP
 
   PH.PassBuilder->registerAnalysisRegistrationCallback([](llvm::ModuleAnalysisManager &MAM) {
     MAM.registerPass([] { return SplitterAnnotationAnalysis{}; });
   });
-  // PH.PassBuilder->registerModuleAnalyses(*PH.ModuleAnalysisManager);
+  PH.PassBuilder->registerModuleAnalyses(*PH.ModuleAnalysisManager);
 
-  PH.PassBuilder->registerModuleAnalyses(MAM);
-  PH.PassBuilder->registerCGSCCAnalyses(CGAM);
-  PH.PassBuilder->registerFunctionAnalyses(FAM);
-  PH.PassBuilder->registerLoopAnalyses(LAM);
-  PH.PassBuilder->crossRegisterProxies(LAM, FAM, CGAM, MAM);
   registerCBSPipeline(MPM, hipsycl::compiler::OptLevel::O3, true);
   HIPSYCL_DEBUG_INFO << "LLVMToHostTranslator: Done registering\n";
 
@@ -114,8 +103,7 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
   FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize});
   MPM.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(FPM)));
 
-  // MPM.printPipeline(llvm::outs(),[](llvm::StringRef Name){return Name;});
-  MPM.run(M, MAM);
+  MPM.run(M, *PH.ModuleAnalysisManager);
   HIPSYCL_DEBUG_INFO << "LLVMToHostTranslator: Done toBackendFlavor\n";
   return true;
 }

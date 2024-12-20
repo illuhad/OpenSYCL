@@ -500,20 +500,10 @@ bool LLVMToBackendTranslator::optimizeFlavoredIR(llvm::Module& M, PassHandler& P
         }
       });
 #endif
-  // TODO: check if this is really necessary.
-  llvm::LoopAnalysisManager LAM;
-  llvm::FunctionAnalysisManager FAM;
-  llvm::CGSCCAnalysisManager CGAM;
-  llvm::ModuleAnalysisManager MAM;
-  PH.PassBuilder->registerModuleAnalyses(MAM);
-  PH.PassBuilder->registerCGSCCAnalyses(CGAM);
-  PH.PassBuilder->registerFunctionAnalyses(FAM);
-  PH.PassBuilder->registerLoopAnalyses(LAM);
-  PH.PassBuilder->crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
   llvm::ModulePassManager MPM =
       PH.PassBuilder->buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
-  MPM.run(M, MAM);
+  MPM.run(M, *PH.ModuleAnalysisManager);
 
   return true;
 }
