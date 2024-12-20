@@ -154,14 +154,6 @@ bool remove(const std::string &filename) {
   return false;
 }
 
-std::string replace_known_variables(std::string path) {
-  if(auto pos = path.find("$ACPP_PATH");pos != std::string::npos){
-    const auto install_dir = get_install_directory();
-    path.replace(pos, std::string_view("$ACPP_PATH").size(), install_dir);
-  }
-  return path;
-}
-
 persistent_storage &persistent_storage::get() {
   static persistent_storage t;
   return t;

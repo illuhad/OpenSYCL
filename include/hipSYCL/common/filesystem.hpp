@@ -48,9 +48,6 @@ bool atomic_write(const std::string& filename, const std::string& data);
 /// Removes a file, returns true if successful.
 bool remove(const std::string &filename);
 
-// Replaces runtime specialized variables, such as $HIPSYCL_PATH in the path.
-std::string replace_known_variables(const std::string path);
-
 class persistent_storage {
 public:
   static persistent_storage& get();

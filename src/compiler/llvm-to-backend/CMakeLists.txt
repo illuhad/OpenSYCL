@@ -198,7 +198,7 @@ if(WITH_SSCP_COMPILER)
       TOOL ptx/LLVMToPtxTool.cpp)
 
     target_compile_definitions(llvm-to-ptx PRIVATE
-      -DHIPSYCL_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
+      -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_CUDA_PATH="${CUDA_TOOLKIT_ROOT_DIR}")
   endif()
 
@@ -253,7 +253,7 @@ if(WITH_SSCP_COMPILER)
       TOOL host/LLVMToHostTool.cpp)
 
     target_compile_definitions(llvm-to-host PRIVATE
-      -DHIPSYCL_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
+      -DACPP_CLANG_PATH="${CLANG_INSTALLED_PATH}" 
       -DHIPSYCL_HOST_CPU_FLAG="${HOST_CPU_FLAG}")
     target_link_libraries(llvm-to-host PRIVATE acpp-clang-cbs)
   endif()

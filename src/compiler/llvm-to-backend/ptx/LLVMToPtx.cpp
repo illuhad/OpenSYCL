@@ -258,11 +258,10 @@ bool LLVMToPtxTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
     if(InputStream.error()) {HIPSYCL_DEBUG_ERROR << "Error while flushing" << InputStream.error().message() << '\n'; }
   }
 
-  const std::string ClangPath = common::filesystem::replace_known_variables(HIPSYCL_CLANG_PATH);
 
   std::string PtxVersionArg = "+ptx" + std::to_string(PtxVersion);
   std::string PtxTargetArg = "sm_" + std::to_string(PtxTarget);
-  llvm::SmallVector<llvm::StringRef, 16> Invocation{ClangPath,
+  llvm::SmallVector<llvm::StringRef, 16> Invocation{getClangPath(),
                                                     "-cc1",
                                                     "-triple",
                                                     "nvptx64-nvidia-cuda",

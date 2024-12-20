@@ -65,7 +65,7 @@ std::string getRocmClang(const std::string& RocmPath) {
 #if defined(ACPP_HIPCC_PATH)
     ClangPath = ACPP_HIPCC_PATH;
 #else
-    ClangPath = common::filesystem::replace_known_variables(ACPP_CLANG_PATH);
+    ClangPath = getClangPath();
 #endif
   }
 
@@ -452,10 +452,9 @@ bool LLVMToAmdgpuTranslator::clangJitLink(llvm::Module& FlavoredModule, std::str
   DummyStream.flush();
 
   auto OffloadArchFlag = "--cuda-gpu-arch="+TargetDevice;
-  std::string ClangPath = common::filesystem::replace_known_variables(ACPP_CLANG_PATH);
 
   llvm::SmallVector<std::string> Invocation = {
-      ClangPath, "-x", "hip", "-O3", "-nogpuinc", OffloadArchFlag, "--cuda-device-only",
+      getClangPath(), "-x", "hip", "-O3", "-nogpuinc", OffloadArchFlag, "--cuda-device-only",
         "-Xclang", "-mlink-bitcode-file", "-Xclang", InputFile->TmpName,
         "-o",  OutputFilename, DummyFile->TmpName
   };
