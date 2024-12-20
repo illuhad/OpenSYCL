@@ -12,9 +12,9 @@
 #define HIPSYCL_LLVM_TO_BACKEND_HPP
 
 #ifndef _WIN32
-#define HIPSYCL_BACKEND_API_EXPORT
+#define ACPP_BACKEND_API_EXPORT
 #else
-#define HIPSYCL_BACKEND_API_EXPORT __declspec(dllexport)
+#define ACPP_BACKEND_API_EXPORT __declspec(dllexport)
 #endif
 
 // Note: This file should not include any LLVM headers or include

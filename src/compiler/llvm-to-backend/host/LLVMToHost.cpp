@@ -135,7 +135,7 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
   AtScopeExit RemoveInputFile([&](){auto Err = llvm::sys::fs::remove(InputFileName);});
 
   llvm::SmallVector<char> OutputFile;
-  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host", HIPSYCL_SHARED_LIBRARY_EXTENSION, OutputFile, llvm::sys::fs::OF_None)){
+  if(auto E = llvm::sys::fs::createTemporaryFile("acpp-sscp-host", ACPP_SHARED_LIBRARY_EXTENSION, OutputFile, llvm::sys::fs::OF_None)){
     this->registerError("LLVMToHost: Could not create temp input file" + E.message());
     return false;
   }
@@ -221,7 +221,7 @@ AddressSpaceMap LLVMToHostTranslator::getAddressSpaceMap() const {
   return ASMap;
 }
 
-HIPSYCL_BACKEND_API_EXPORT std::unique_ptr<LLVMToBackendTranslator>
+ACPP_BACKEND_API_EXPORT std::unique_ptr<LLVMToBackendTranslator>
 createLLVMToHostTranslator(const std::vector<std::string> &KernelNames) {
   return std::make_unique<LLVMToHostTranslator>(KernelNames);
 }

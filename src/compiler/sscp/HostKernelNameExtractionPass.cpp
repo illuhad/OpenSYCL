@@ -57,7 +57,7 @@ llvm::PreservedAnalyses HostKernelNameExtractionPass::run(llvm::Module &M,
           if (llvm::Function *KernelFunc = llvm::dyn_cast<llvm::Function>(CI->getOperand(0))) {
             KernelName = KernelFunc->getName();
 #ifdef _MSC_VER
-            replaceInvalidCharsInSymbolName(KernelName);
+            replaceInvalidMSABICharsInSymbolName(KernelName);
 #endif
           } else {
             HIPSYCL_DEBUG_WARNING << "HostKernelNameExtractionPass: Could not find kernel name "

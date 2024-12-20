@@ -19,7 +19,7 @@ inline bool isValidCharInSymbolName(char C) {
   return std::isalnum(C) || C == '_' || C == '$' || C == '.';
 }
 
-inline void replaceInvalidCharsInSymbolName(std::string &Name) {
+inline void replaceInvalidMSABICharsInSymbolName(std::string &Name) {
   for (auto &C : Name) {
     if (!isValidCharInSymbolName(C)) {
       C = '_';

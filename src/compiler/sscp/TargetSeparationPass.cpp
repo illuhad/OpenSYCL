@@ -193,11 +193,11 @@ struct KernelInfo {
   }
 };
 
-void replaceInvalidCharsInSymbolNames(llvm::Module &M) {
 #ifdef _MSC_VER
+void replaceInvalidMSABICharsInSymbolNames(llvm::Module &M) {
     auto UpdateName = [](auto &S) {
       std::string Name(S.getName());
-      replaceInvalidCharsInSymbolName(Name);
+      replaceInvalidMSABICharsInSymbolName(Name);
       S.setName(Name);
     };
 
@@ -207,8 +207,8 @@ void replaceInvalidCharsInSymbolNames(llvm::Module &M) {
     for(auto &G : M.globals()){
       UpdateName(G);
     }
-#endif
 }
+#endif
 
 std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
                                                const std::vector<std::string>& DynamicFunctions,
@@ -302,7 +302,9 @@ std::unique_ptr<llvm::Module> generateDeviceIR(llvm::Module &M,
     }
   }
 
-  replaceInvalidCharsInSymbolNames(*DeviceModule);
+#ifdef _MSC_VER
+  replaceInvalidMSABICharsInSymbolNames(*DeviceModule);
+#endif
 
   EntrypointPreparationPass EPP{ExportAllSymbols};
   EPP.run(*DeviceModule, DeviceMAM);

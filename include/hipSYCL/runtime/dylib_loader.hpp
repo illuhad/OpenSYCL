@@ -21,9 +21,9 @@
 #endif
 
 #ifdef _WIN32
-#define HIPSYCL_SHARED_LIBRARY_EXTENSION "dll"
+#define ACPP_SHARED_LIBRARY_EXTENSION "dll"
 #else
-#define HIPSYCL_SHARED_LIBRARY_EXTENSION "so"
+#define ACPP_SHARED_LIBRARY_EXTENSION "so"
 #endif
 
 namespace hipsycl {
