@@ -52,6 +52,10 @@ function(create_llvm_based_library)
   endif()
   # We need symbolic functions for stdpar
   target_link_libraries(${target} PRIVATE ${HIPSYCL_STDPAR_RT_LINKER_FLAGS})
+
+  if(ACPP_LLVM_COMPONENT)
+    add_dependencies(${target} intrinsics_gen)
+  endif()
   
   set(install_subdir hipSYCL/llvm-to-backend)
   install(TARGETS ${target} 

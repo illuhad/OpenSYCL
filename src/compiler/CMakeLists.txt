@@ -182,6 +182,10 @@ function(configure_target)
     target_link_libraries(${target} PRIVATE clang LLVMSupport)
   endif()
 
+  if(ACPP_LLVM_COMPONENT)
+    add_dependencies(${target} intrinsics_gen)
+  endif()
+
   install(TARGETS ${target}
           LIBRARY DESTINATION lib
           RUNTIME DESTINATION bin
