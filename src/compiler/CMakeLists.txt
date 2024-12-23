@@ -130,9 +130,9 @@ function(configure_target)
   endif()
 
   install(TARGETS ${target}
-          LIBRARY DESTINATION lib
-          RUNTIME DESTINATION bin
-          ARCHIVE DESTINATION lib)
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endfunction(configure_target)
 
 configure_target(TARGET acpp-clang)
