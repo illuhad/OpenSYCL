@@ -177,7 +177,7 @@ ocl_hardware_context::ocl_hardware_context(const cl::Device &dev,
   std::string platform_name =
       platform_info_query<CL_PLATFORM_NAME, std::string>(_dev);
 
-  if(platform_name == "Intel(R) OpenCL Graphics" || platform_name == "Intel(R) OpenCL")
+  if(platform_name == "Intel(R) OpenCL Graphics" || platform_name == "Intel(R) OpenCL" || platform_name == "Portable Computing Language")
     _has_intel_extension_profile = true;
 }
 
@@ -497,7 +497,7 @@ ocl_hardware_context::get_property(device_uint_list_property prop) const {
         get_property(device_uint_property::max_num_sub_groups);
     std::size_t max_group_size =
         get_property(device_uint_property::max_group_size);
-    
+
     auto min_bound = 1;
     auto max_bound = std::max(max_num_sub_groups, max_group_size);
 
@@ -601,7 +601,7 @@ ocl_hardware_manager::ocl_hardware_manager()
 
   int global_device_index = 0;
   for(const auto& p : platforms) {
-    
+
     std::string platform_name;
     err = p.getInfo(CL_PLATFORM_NAME, &platform_name);
     if(err != CL_SUCCESS) {
