@@ -63,6 +63,8 @@ LLVMToHostTranslator::LLVMToHostTranslator(const std::vector<std::string> &KN)
       KernelNames{KN} {}
 
 bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
+  M.setPICLevel(llvm::PICLevel::Level::BigPIC); // we're setting this later with -fPIC anyways.
+  M.setPIELevel(llvm::PIELevel::Level::Default); // reset to default
 
   for (auto KernelName : KernelNames) {
     if (auto *F = M.getFunction(KernelName)) {
