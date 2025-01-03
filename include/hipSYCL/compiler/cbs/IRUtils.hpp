@@ -60,6 +60,8 @@ static const std::array<const char *, 3> NumGroupsGlobalNames{
 
 static constexpr const char SscpDynamicLocalMemoryPtrName[] = "__acpp_cbs_sscp_dynamic_local_memory";
 static constexpr const char SscpInternalLocalMemoryPtrName[] = "__acpp_cbs_sscp_internal_local_memory";
+
+static constexpr const char CbsKernelDimensionName[] = "acpp_cbs_kernel_dimension";
 } // namespace cbs
 
 static constexpr const char SscpAnnotationsName[] = "hipsycl.sscp.annotations";

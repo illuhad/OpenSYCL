@@ -92,7 +92,7 @@ llvm::LoadInst *mergeGVLoadsInEntry(llvm::Function &F, llvm::StringRef VarName) 
 }
 
 // parses the range dimensionality from the mangled kernel name
-std::size_t getRangeDim(llvm::Function &F) {
+std::size_t getRangeDim(llvm::Function &F, bool IsSscp) {
   auto FName = F.getName();
   // todo: fix with MS mangling
   llvm::Regex Rgx("iterate_nd_range_ompILi([1-3])E");
@@ -100,19 +100,40 @@ std::size_t getRangeDim(llvm::Function &F) {
   if (Rgx.match(FName, &Matches))
     return std::stoull(static_cast<std::string>(Matches[1]));
 
-  if (auto MD = F.getParent()->getNamedMetadata(SscpAnnotationsName)) {
+  auto GetValue = [](llvm::Constant *Const) -> std::size_t {
+    if (auto CI = llvm::dyn_cast<llvm::ConstantInt>(Const))
+      return CI->getZExtValue();
+    if (auto ZI = llvm::dyn_cast<llvm::ConstantAggregateZero>(Const))
+      return 0;
+    if (auto CS = llvm::dyn_cast<llvm::ConstantAggregate>(Const)) {
+      return llvm::cast<llvm::ConstantInt>(CS->getOperand(0))->getZExtValue();
+    }
+    llvm_unreachable("[SubCFG] Could not interpret kernel dimensionality value!");
+  };
+
+  if (!IsSscp) {
+    std::size_t Dim = 0;
+    utils::findFunctionsWithStringAnnotationsWithArg(*F.getParent(), [&](llvm::Function *AnnotF,
+                                                                         llvm::StringRef Annotation,
+                                                                         llvm::Constant *Argument) {
+      if (AnnotF == &F) {
+        if (Annotation.compare(CbsKernelDimensionName) == 0) {
+          if (auto GV = llvm::dyn_cast<llvm::GlobalVariable>(Argument)){
+            Dim = GetValue(GV->getInitializer());
+          } else
+            Dim = GetValue(Argument);
+        }
+      }
+    });
+    return Dim;
+  } else if (auto MD = F.getParent()->getNamedMetadata(SscpAnnotationsName)) {
     for (auto OP : MD->operands()) {
       if (OP->getNumOperands() == 3 &&
           llvm::cast<llvm::MDString>(OP->getOperand(1))->getString() == SscpKernelDimensionName) {
         if (&F == llvm::dyn_cast<llvm::Function>(
                       llvm::cast<llvm::ValueAsMetadata>(OP->getOperand(0))->getValue())) {
           auto ConstMD = llvm::cast<llvm::ConstantAsMetadata>(OP->getOperand(2))->getValue();
-          if (auto CI = llvm::dyn_cast<llvm::ConstantInt>(ConstMD))
-            return CI->getZExtValue();
-          if (auto ZI = llvm::dyn_cast<llvm::ConstantAggregateZero>(ConstMD))
-            return 0;
-          if (auto CS = llvm::dyn_cast<llvm::ConstantStruct>(ConstMD))
-            return llvm::cast<llvm::ConstantInt>(CS->getOperand(0))->getZExtValue();
+          return GetValue(ConstMD);
         }
       }
     }
@@ -1207,7 +1228,7 @@ void formSubCfgs(llvm::Function &F, llvm::LoopInfo &LI, llvm::DominatorTree &DT,
                  llvm::PostDominatorTree &PDT, const SplitterAnnotationInfo &SAA, bool IsSscp) {
   HIPSYCL_DEBUG_EXECUTE_VERBOSE(F.viewCFG();)
 
-  const std::size_t Dim = getRangeDim(F);
+  const std::size_t Dim = getRangeDim(F, IsSscp);
   HIPSYCL_DEBUG_INFO << "[SubCFG] Kernel is " << Dim << "-dimensional\n";
 
   const auto LocalSize = getLocalSizeValues(F, Dim, IsSscp);
@@ -1332,7 +1353,7 @@ void createLoopsAroundKernel(llvm::Function &F, llvm::DominatorTree &DT, llvm::L
 
   moveAllocasToEntry(F, Blocks);
 
-  const auto Dim = getRangeDim(F);
+  const auto Dim = getRangeDim(F, IsSscp);
 
   // insert dummy induction variable that can be easily identified and replaced later
   llvm::IRBuilder Builder{F.getEntryBlock().getTerminator()};
@@ -1373,7 +1394,7 @@ void SubCfgFormationPassLegacy::getAnalysisUsage(llvm::AnalysisUsage &AU) const 
 bool SubCfgFormationPassLegacy::runOnFunction(llvm::Function &F) {
   auto &SAA = getAnalysis<SplitterAnnotationAnalysisLegacy>().getAnnotationInfo();
 
-  if (!SAA.isKernelFunc(&F) || getRangeDim(F) == 0)
+  if (!SAA.isKernelFunc(&F) || getRangeDim(F, false) == 0)
     return false;
 
   HIPSYCL_DEBUG_INFO << "[SubCFG] Form SubCFGs in " << F.getName() << "\n";
@@ -1397,7 +1418,7 @@ llvm::PreservedAnalyses SubCfgFormationPass::run(llvm::Function &F,
   auto &MAM = AM.getResult<llvm::ModuleAnalysisManagerFunctionProxy>(F);
   auto *SAA = MAM.getCachedResult<SplitterAnnotationAnalysis>(*F.getParent());
 
-  if (!SAA || !SAA->isKernelFunc(&F) || getRangeDim(F) == 0)
+  if (!SAA || !SAA->isKernelFunc(&F) || getRangeDim(F, IsSscp_) == 0)
     return llvm::PreservedAnalyses::all();
 
   HIPSYCL_DEBUG_INFO << "[SubCFG] Form SubCFGs in " << F.getName() << "\n";
