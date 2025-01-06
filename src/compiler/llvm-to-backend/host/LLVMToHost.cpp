@@ -143,6 +143,22 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
   const std::string ClangPath = getClangPath();
   const std::string CpuFlag = HIPSYCL_HOST_CPU_FLAG;
 
+#ifdef _WIN32
+#ifdef _DLL
+#ifdef _DEBUG
+  const std::string FmsRuntimeLib = "-fms-runtime-lib=dll_debug";
+#else
+  const std::string FmsRuntimeLib = "-fms-runtime-lib=dll";
+#endif
+#else
+#ifdef _DEBUG
+  const std::string FmsRuntimeLib = "-fms-runtime-lib=static_debug";
+#else
+  const std::string FmsRuntimeLib = "-fms-runtime-lib=static";
+#endif
+#endif
+#endif
+
   llvm::SmallVector<llvm::StringRef, 16> Invocation{ClangPath,
                                                     "-O3",
                                                     CpuFlag,
@@ -152,6 +168,8 @@ bool LLVMToHostTranslator::translateToBackendFormat(llvm::Module &FlavoredModule
                                                     "-Wno-pass-failed",
                                                     #ifndef _WIN32
                                                     "-fPIC",
+                                                    #else
+                                                    FmsRuntimeLib,
                                                     #endif
                                                     "-o",
                                                     OutputFileName,
