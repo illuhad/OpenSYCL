@@ -80,6 +80,11 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
           ->addOperand(llvm::MDTuple::get(M.getContext(), Operands));
 
       F->setLinkage(llvm::GlobalValue::LinkageTypes::ExternalLinkage);
+      
+#ifdef _WIN32
+      // Windows exceptions..
+      F->setPersonalityFn(nullptr);
+#endif
     }
   }
 
