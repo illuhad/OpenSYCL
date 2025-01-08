@@ -82,6 +82,9 @@ template <class PtrSet> struct PtrSetWrapper {
   auto begin() -> decltype(Set.begin()) { return Set.begin(); }
 };
 
+
+void replaceUsesOfGVWith(llvm::Function &F, llvm::StringRef GlobalVarName, llvm::Value *To, llvm::StringRef LogPrefix = "");
+
 llvm::Loop *updateDtAndLi(llvm::LoopInfo &LI, llvm::DominatorTree &DT, const llvm::BasicBlock *B,
                           llvm::Function &F);
 

@@ -2,6 +2,10 @@
 // RUN: %t | FileCheck %s
 // RUN: %acpp %s -o %t --acpp-targets=omp --acpp-use-accelerated-cpu -O
 // RUN: %t | FileCheck %s
+// RUN: %acpp %s -o %t --acpp-targets=generic
+// RUN: ACPP_VISIBILITY_MASK=omp; %t | FileCheck %s
+// RUN: %acpp %s -o %t --acpp-targets=generic -O
+// RUN: ACPP_VISIBILITY_MASK=omp; %t | FileCheck %s
 
 // adapted from https://github.com/UoB-HPC/sycl_dgemm/blob/main/dgemm.cpp
 

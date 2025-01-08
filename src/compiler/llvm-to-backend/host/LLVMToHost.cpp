@@ -111,7 +111,7 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
   HIPSYCL_DEBUG_INFO << "LLVMToHostTranslator: Done registering\n";
 
   llvm::FunctionPassManager FPM;
-  FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize});
+  FPM.addPass(HostKernelWrapperPass{KnownLocalMemSize, KnownGroupSizeX, KnownGroupSizeY, KnownGroupSizeZ});
   MPM.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(FPM)));
 
   MPM.run(M, *PH.ModuleAnalysisManager);

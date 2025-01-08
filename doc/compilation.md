@@ -37,9 +37,7 @@ The generic SSCP flow can potentially provide very fast compile times, very good
 
 ### Implementation status
 
-The SSCP flow is supported for all backends.
-
-Some features (e.g. SYCL 2020 reductions or group algorithms) are not yet implemented.
+The SSCP flow is supported for all backends. The set of supported features is a strict superset of the features of other compilation flows. The only exception to this is the ability to mix-and-match SYCL with other backend-specific programming models.
 
 ### How it works
 

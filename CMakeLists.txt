@@ -11,7 +11,7 @@ endif()
 
 
 set(ACPP_VERSION_MAJOR 24)
-set(ACPP_VERSION_MINOR 06)
+set(ACPP_VERSION_MINOR 10)
 set(ACPP_VERSION_PATCH 0)
 
 execute_process(

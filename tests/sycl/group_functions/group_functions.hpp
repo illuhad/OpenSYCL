@@ -25,9 +25,8 @@
 
 using namespace cl;
 
-#ifndef __ACPP_ENABLE_LLVM_SSCP_TARGET__
 #define HIPSYCL_ENABLE_GROUP_ALGORITHM_TESTS
-#endif
+
 
 
 #ifdef TESTS_GROUPFUNCTION_FULL
@@ -142,7 +141,7 @@ T initialize_type(T init) {
 template<typename T, typename std::enable_if_t<!std::is_arithmetic_v<T>, int> = 0>
 ACPP_KERNEL_TARGET
 T initialize_type(elementType<T> init) {
-  constexpr size_t N = T::get_count();
+  constexpr size_t N = T::size();
 
   if constexpr (std::is_same_v<elementType<T>, bool>)
     return T{init};
@@ -221,7 +220,7 @@ inline void create_bool_test_data(std::vector<char> &buffer, size_t local_size,
 }
 
 template<typename T, int Line>
-void check_binary_reduce(std::vector<T> buffer, size_t local_size, size_t global_size,
+void check_binary_reduce(std::vector<T> buffer, std::vector<T> input, size_t local_size, size_t global_size,
                          std::vector<bool> expected, std::string name,
                          size_t break_size = 0, size_t offset = 0) {
   std::vector<std::string> cases{"everything except one false", "everything false",
@@ -268,6 +267,7 @@ void test_nd_group_function_1d(size_t elements_per_thread, DataGenerator dg,
   for (int i = 0; i < local_sizes.size(); ++i) {
     size_t local_size  = local_sizes[i];
     size_t global_size = global_sizes[i];
+    uint32_t used_sgrp_size = 0;
 
     std::vector<T> host_buf(elements_per_thread * global_size, T{});
 
@@ -277,11 +277,12 @@ void test_nd_group_function_1d(size_t elements_per_thread, DataGenerator dg,
 
     {
       sycl::buffer<T, 1> buf{host_buf.data(), host_buf.size()};
+      sycl::buffer<uint32_t, 1> used_sgrp_size_buffer(&used_sgrp_size, 1);
 
       queue.submit([&](sycl::handler &cgh) {
         using namespace sycl::access;
         auto acc = buf.template get_access<mode::read_write>(cgh);
-
+        auto sgpr_size_acc = used_sgrp_size_buffer.template get_access<mode::read_write>(cgh);
         cgh.parallel_for<class test_kernel<1, CallingLine, T>>(
           sycl::nd_range<1>{global_size, local_size},
           [=](sycl::nd_item<1> item) {
@@ -289,13 +290,13 @@ void test_nd_group_function_1d(size_t elements_per_thread, DataGenerator dg,
           auto sg = item.get_sub_group();
 
           T local_value = acc[item.get_global_linear_id()];
-
+          sgpr_size_acc[0] =  sg.get_max_local_range().size();
           f(acc, item.get_global_linear_id(), sg, g, local_value);
         });
       });
     }
 
-    vf(host_buf, original_host_buf, local_size, global_size);
+    vf(host_buf, original_host_buf,used_sgrp_size, local_size, global_size);
   }
 }
 
@@ -346,7 +347,7 @@ void test_nd_group_function_2d(size_t elements_per_thread, DataGenerator dg,
       });
     }
 
-    vf(host_buf, original_host_buf, local_size * local_size, global_size * global_size);
+    vf(host_buf, original_host_buf,0, local_size * local_size, global_size * global_size);
   }
 }
 

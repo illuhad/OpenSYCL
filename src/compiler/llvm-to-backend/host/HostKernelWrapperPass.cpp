@@ -37,6 +37,9 @@ namespace hipsycl {
 namespace compiler {
 
 namespace {
+
+constexpr llvm::StringRef PassPrefix = "[SSCP][HostKernelWrapper] ";
+
 llvm::StoreInst *storeToGlobalVar(llvm::IRBuilderBase Bld, llvm::Value *V,
                                   llvm::StringRef GlobalVarName) {
   auto M = Bld.GetInsertBlock()->getModule();
@@ -46,21 +49,7 @@ llvm::StoreInst *storeToGlobalVar(llvm::IRBuilderBase Bld, llvm::Value *V,
 }
 
 void replaceUsesOfGVWith(llvm::Function &F, llvm::StringRef GlobalVarName, llvm::Value *To) {
-  auto M = F.getParent();
-  auto GV = M->getGlobalVariable(GlobalVarName);
-  if (!GV)
-    return;
-
-  HIPSYCL_DEBUG_INFO << "[SSCP][HostKernelWrapper] RUOGVW: " << *GV << " with " << *To << "\n";
-  llvm::SmallVector<llvm::Instruction *> ToErase;
-  for (auto U : GV->users()) {
-    if (auto I = llvm::dyn_cast<llvm::LoadInst>(U); I && I->getFunction() == &F) {
-      HIPSYCL_DEBUG_INFO << "[SSCP][HostKernelWrapper] RUOGVW: " << *I << " with " << *To << "\n";
-      I->replaceAllUsesWith(To);
-    }
-  }
-  for (auto I : ToErase)
-    I->eraseFromParent();
+  utils::replaceUsesOfGVWith(F, GlobalVarName, To, PassPrefix);
 }
 
 /*
@@ -74,7 +63,8 @@ void replaceUsesOfGVWith(llvm::Function &F, llvm::StringRef GlobalVarName, llvm:
  * This makes calling the kernel from the host code straighforward, as only the work group info
  * struct and the user arguments need to be passed to the wrapper.
  */
-llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocalMemSize) {
+llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocalMemSize,
+                                    const std::array<int, 3> &KnownWgSize) {
   auto M = F.getParent();
   auto &Ctx = M->getContext();
 
@@ -174,8 +164,14 @@ llvm::Function *makeWrapperFunction(llvm::Function &F, std::int64_t DynamicLocal
   for (int I = 0; I < 3; ++I) {
     replaceUsesOfGVWith(*Wrapper, cbs::NumGroupsGlobalNames[I], NumGroups[I]);
     replaceUsesOfGVWith(*Wrapper, cbs::GroupIdGlobalNames[I], GroupIds[I]);
-    replaceUsesOfGVWith(*Wrapper, cbs::LocalSizeGlobalNames[I], LocalSize[I]);
+    if (KnownWgSize[I] != 0) {
+      replaceUsesOfGVWith(*Wrapper, cbs::LocalSizeGlobalNames[I],
+                                 llvm::ConstantInt::get(SizeT, KnownWgSize[I]));
+    } else {
+      replaceUsesOfGVWith(*Wrapper, cbs::LocalSizeGlobalNames[I], LocalSize[I]);
+    }
   }
+
   replaceUsesOfGVWith(*Wrapper, cbs::SscpDynamicLocalMemoryPtrName, LocalMemPtr);
   replaceUsesOfGVWith(*Wrapper, cbs::SscpInternalLocalMemoryPtrName, InternalLocalMemPtr);
 
@@ -196,10 +192,9 @@ llvm::PreservedAnalyses HostKernelWrapperPass::run(llvm::Function &F,
   if (!SAA || !SAA->isKernelFunc(&F))
     return llvm::PreservedAnalyses::all();
 
-  auto Wrapper = makeWrapperFunction(F, DynamicLocalMemSize);
+  auto Wrapper = makeWrapperFunction(F, DynamicLocalMemSize, KnownWgSize);
 
-  HIPSYCL_DEBUG_INFO << "[SSCP][HostKernelWrapper] Created kernel wrapper: " << Wrapper->getName()
-                     << "\n";
+  HIPSYCL_DEBUG_INFO << PassPrefix << "Created kernel wrapper: " << Wrapper->getName() << "\n";
 
   return llvm::PreservedAnalyses::none();
 }
