@@ -219,63 +219,70 @@ kernel_adaptivity_engine::finalize_binary_configuration(
     config.append_base_configuration(
         kernel_base_config_parameter::single_kernel, _kernel_name);
 
-    // Hard-code group sizes into the JIT binary
-    config.set_build_option(kernel_build_option::known_group_size_x,
-                            _block_size[0]);
-    config.set_build_option(kernel_build_option::known_group_size_y,
-                            _block_size[1]);
-    config.set_build_option(kernel_build_option::known_group_size_z,
-                            _block_size[2]);
+    if(_adaptivity_level >=1 ) {
+      // Hard-code group sizes into the JIT binary
+      config.set_build_option(kernel_build_option::known_group_size_x,
+                              _block_size[0]);
+      config.set_build_option(kernel_build_option::known_group_size_y,
+                              _block_size[1]);
+      config.set_build_option(kernel_build_option::known_group_size_z,
+                              _block_size[2]);
+    }
 
     // Try to optimize size_t -> i32 for queries if those fit in int
-    auto global_size = _num_groups * _block_size;
-    auto int_max = std::numeric_limits<int>::max();
-    if (global_size[0] * global_size[1] * global_size[2] < int_max)
-      config.set_build_flag(kernel_build_flag::global_sizes_fit_in_int);
-
+    if(_adaptivity_level >=2 ) {
+      auto global_size = _num_groups * _block_size;
+      auto int_max = std::numeric_limits<int>::max();
+      if (global_size[0] * global_size[1] * global_size[2] < int_max)
+        config.set_build_flag(kernel_build_flag::global_sizes_fit_in_int);
+    }
     // Hard-code local memory size into the JIT binary
     config.set_build_option(kernel_build_option::known_local_mem_size,
                             _local_mem_size);
-
     // Handle kernel parameter optimization hints
-    for(int i = 0; i < _kernel_info->get_num_parameters(); ++i) {
-      std::size_t arg_size = _kernel_info->get_argument_size(i);
-      if (has_annotation(_kernel_info, i,
-                         hcf_kernel_info::annotation_type::specialized) &&
-          arg_size <= sizeof(uint64_t)) {
-        uint64_t buffer_value = 0;
-        std::memcpy(&buffer_value, _arg_mapper.get_mapped_args()[i], arg_size);
-        config.set_specialized_kernel_argument(i, buffer_value);
-      }
-
-      if (_kernel_info->get_argument_type(i) ==
-          hcf_kernel_info::argument_type::pointer) {
+    if(_adaptivity_level >= 3) {
+      for(int i = 0; i < _kernel_info->get_num_parameters(); ++i) {
+        std::size_t arg_size = _kernel_info->get_argument_size(i);
         if (has_annotation(_kernel_info, i,
-                           hcf_kernel_info::annotation_type::noalias)) {
-          config.set_kernel_param_flag(i, kernel_param_flag::noalias);
+                          hcf_kernel_info::annotation_type::specialized) &&
+            arg_size <= sizeof(uint64_t)) {
+          uint64_t buffer_value = 0;
+          std::memcpy(&buffer_value, _arg_mapper.get_mapped_args()[i], arg_size);
+          config.set_specialized_kernel_argument(i, buffer_value);
+        }
+
+        if (_kernel_info->get_argument_type(i) ==
+            hcf_kernel_info::argument_type::pointer) {
+          if (has_annotation(_kernel_info, i,
+                            hcf_kernel_info::annotation_type::noalias)) {
+            config.set_kernel_param_flag(i, kernel_param_flag::noalias);
+          }
         }
       }
     }
 
     // Handle auto alignment specialization
-    for(int i = 0; i < _kernel_info->get_num_parameters(); ++i) {
-      std::size_t arg_size = _kernel_info->get_argument_size(i);
-      if (_kernel_info->get_argument_type(i) == hcf_kernel_info::argument_type::pointer) {
-        uint64_t buffer = 0;
-        std::memcpy(&buffer, _arg_mapper.get_mapped_args()[i],
-                    _kernel_info->get_argument_size(i));
+    if(_adaptivity_level >= 4) {
+      for(int i = 0; i < _kernel_info->get_num_parameters(); ++i) {
+        std::size_t arg_size = _kernel_info->get_argument_size(i);
+        if (_kernel_info->get_argument_type(i) == hcf_kernel_info::argument_type::pointer) {
+          uint64_t buffer = 0;
+          std::memcpy(&buffer, _arg_mapper.get_mapped_args()[i],
+                      _kernel_info->get_argument_size(i));
 
-        int alignment = determine_ptr_alignment(buffer);
-        if(alignment > 0) {
-          HIPSYCL_DEBUG_INFO
-              << "adaptivity_engine: Inferred pointer alignment of "
-              << alignment << " for kernel argument " << i << std::endl;
-          config.set_known_alignment(i, alignment);
+          int alignment = determine_ptr_alignment(buffer);
+          if(alignment > 0) {
+            HIPSYCL_DEBUG_INFO
+                << "adaptivity_engine: Inferred pointer alignment of "
+                << alignment << " for kernel argument " << i << std::endl;
+            config.set_known_alignment(i, alignment);
+          }
         }
       }
     }
 
-    if(application::get_settings().get<setting::enable_allocation_tracking>()) {
+    if(application::get_settings().get<setting::enable_allocation_tracking>() &&
+      _adaptivity_level >= 5) {
       // Detect whether pointer arguments qualify for NoAlias/restrict semantics.
       // This is achieved by determining the base of the allocations for all pointer
       // kernel arguments, and checking whether there are other pointer arguments
@@ -334,7 +341,7 @@ kernel_adaptivity_engine::finalize_binary_configuration(
     }
   }
   
-  if(_adaptivity_level > 1) {
+  if(_adaptivity_level >= 6) {
 
     auto base_id = config.generate_id();
     
