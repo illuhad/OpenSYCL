@@ -1,0 +1,173 @@
+
+name: Release AdaptiveCpp Packages
+on: [push, pull_request]
+
+jobs:
+  packaging-acpp-all-backends:
+    name: Packaging AdaptiveCpp, clang ${{matrix.clang}}, ${{matrix.os}}, CUDA ${{matrix.cuda}}, ROCm ${{matrix.rocm}}
+    runs-on: ${{matrix.os}}
+    container:
+      image: ubuntu:jammy-20240212
+    strategy:
+      matrix:
+        clang: ['16']
+        os: [ubuntu-22.04]
+        cmake: [3.29.0]
+        cuda: [11.8]
+        rocm: [5.6.1]
+    steps:
+      - name: install git and other dependencies in container
+        run: |
+          apt update
+          apt install -y git lsb-release software-properties-common build-essential wget curl gpg unzip g++-11 apt-utils bash rpm libssl-dev
+          chsh -s /usr/bin/bash
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Get Credentials
+        run: |
+          git config --global --add safe.directory /__w/AdaptiveCpp/AdaptiveCpp
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+      - name: install LLVM
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh ${{matrix.clang}}
+          apt install -y libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev llvm-${{matrix.clang}}-dev liblld-${{matrix.clang}}-dev
+          apt install -y libstdc++-12-dev
+      - name: install dependencies
+        run: |
+           apt install -y python3 libboost-all-dev libtbb-dev
+           cd .. && git clone https://github.com/Kitware/CMake.git && cd CMake
+           export CC=clang-${{matrix.clang}}
+           export CXX=clang++-${{matrix.clang}}
+           git fetch --tags && git checkout v${{matrix.cmake}}
+           ./bootstrap --parallel=2 && make -j2 && make install
+           cd -
+      - name: setup build environment
+        run: |
+          export PKGNAME=$(git describe --tags | sed 's,^v,,;s,,,;s,-.*,,;')
+          export PKGNAME=$PKGNAME~$(git log -1 --format=%h) 
+          export PKGNAME=$PKGNAME+$(git show -s --format=%cd --date=short HEAD | sed 's,-,,;s,-,,;')
+          git config user.name "${{ github.actor }}"
+          export DEBFULLNAME=$(git config user.name)
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          export DEBEMAIL=$(git config user.email)
+          echo "PKGNAME=${PKGNAME}" >> $GITHUB_ENV
+          echo "DEBFULLNAME=${DEBFULLNAME}" >> $GITHUB_ENV
+          echo "DEBEMAIL=${DEBEMAIL}" >> $GITHUB_ENV
+          export CUDAMAJOR=$(echo ${{matrix.cuda}} | sed 's/\..*//')
+          export CUDAMINOR=$(echo ${{matrix.cuda}} | sed 's/.*\.//')
+          echo "CUDAMAJOR=${CUDAMAJOR}" >> $GITHUB_ENV
+          echo "CUDAMINOR=${CUDAMINOR}" >> $GITHUB_ENV
+          echo $GITHUB_ENV
+          export CXXFLAGS="$CXXFLAGS"
+          if [ "${{matrix.clang}}" != "11" ] && [ "${{matrix.clang}}" -lt "16" ]; then
+            export OMP_CXX_FLAGS="$CXXFLAGS -fexperimental-new-pass-manager"
+            export CC=clang-${{matrix.clang}}
+            export CXX=clang++-${{matrix.clang}}
+          fi
+          echo "CC=${CC}" >> $GITHUB_ENV
+          echo "CXX=${CXX}" >> $GITHUB_ENV
+          echo "OMP_CXX_FLAGS=${OMP_CXX_FLAGS}" >> $GITHUB_ENV
+      - name: install CUDA Toolkit and driver
+        run : |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          dpkg -i cuda-keyring_1.1-1_all.deb
+          apt update
+          apt install -y cuda-toolkit-${{ env.CUDAMAJOR }}-${{ env.CUDAMINOR }}
+          DEBIAN_FRONTEND=noninteractive apt install -y cuda-drivers-550
+          echo "$(dpkg -S libcuda)"
+      - name: install ROCm
+        run: |
+          export CODENAME="jammy"
+          apt install -y libnuma-dev unzip
+          wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+          echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/${{matrix.rocm}} $CODENAME main" | tee /etc/apt/sources.list.d/rocm.list
+          printf 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' | tee /etc/apt/preferences.d/rocm-pin-600
+          apt update
+          apt install -y rocm-dev
+      - name: install OpenCL development files and loader
+        run: |
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
+          apt update
+          apt install -y intel-oneapi-runtime-opencl-2024 intel-oneapi-runtime-compilers-2024 ocl-icd-libopencl1 ocl-icd-opencl-dev
+      - name: install Level Zero
+        run : |
+          wget https://github.com/oneapi-src/level-zero/releases/download/v1.2.3/level-zero-devel_1.2.3+u18.04_amd64.deb
+          wget https://github.com/oneapi-src/level-zero/releases/download/v1.2.3/level-zero_1.2.3+u18.04_amd64.deb
+          dpkg -i ./level-zero*
+      - name: install packaging helpers
+        run: |
+          apt install -y devscripts debhelper
+      - name: package AdaptiveCpp
+        run: |
+          cmake --workflow --preset workflow-release
+      - name: Install the package
+        run: |
+          dpkg -i ${GITHUB_WORKSPACE}/_packages/acpp-${{ env.PKGNAME }}-Linux.deb
+      - name: Release DEB Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-backends-${{ env.PKGNAME }}-deb
+          path: /home/runner/work/AdaptiveCpp/AdaptiveCpp/_packages/acpp-${{ env.PKGNAME }}-Linux.deb
+      - name: Release RPM Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-backends-${{ env.PKGNAME }}-rpm
+          path: /home/runner/work/AdaptiveCpp/AdaptiveCpp/_packages/acpp-${{ env.PKGNAME }}-Linux.rpm
+      - name: build generic SSCP tests
+        if: matrix.clang >= 14
+        run: |
+          mkdir ${GITHUB_WORKSPACE}/build-tests-sscp
+          cd ${GITHUB_WORKSPACE}/build-tests-sscp
+          cmake -DACPP_TARGETS="generic" -DAdaptiveCpp_DIR=/opt/AdaptiveCpp/lib/cmake/AdaptiveCpp -DWITH_PSTL_TESTS=ON ${GITHUB_WORKSPACE}/tests
+          make -j2
+      - name: build CPU tests
+        run: |
+          mkdir ${GITHUB_WORKSPACE}/build-tests-cpu
+          cd ${GITHUB_WORKSPACE}/build-tests-cpu
+          cmake -DACPP_TARGETS="omp" -DAdaptiveCpp_DIR=/opt/AdaptiveCpp/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests
+          make -j2
+      - name: build CUDA tests
+        run: |
+          mkdir ${GITHUB_WORKSPACE}/build-tests-cuda
+          cd ${GITHUB_WORKSPACE}/build-tests-cuda
+          cmake -DACPP_TARGETS="cuda:sm_60" -DAdaptiveCpp_DIR=/opt/AdaptiveCpp/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests -DCMAKE_EXE_LINKER_FLAGS="-L/usr/lib/llvm-${{matrix.clang}}/lib"
+          make -j2
+      - name: build ROCm tests
+        run: |
+          mkdir ${GITHUB_WORKSPACE}/build-tests-rocm
+          cd ${GITHUB_WORKSPACE}/build-tests-rocm
+          cmake -DACPP_TARGETS="hip:gfx906" -DAdaptiveCpp_DIR=/opt/AdaptiveCpp/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests -DCMAKE_EXE_LINKER_FLAGS="-L/usr/lib/llvm-${{matrix.clang}}/lib"
+          make -j2
+      - name: build explicit multipass tests
+        run: |
+          mkdir ${GITHUB_WORKSPACE}/build-tests-emp
+          cd ${GITHUB_WORKSPACE}/build-tests-emp
+          cmake -DACPP_TARGETS="omp;cuda.explicit-multipass:sm_60;hip:gfx906" -DAdaptiveCpp_DIR=/opt/AdaptiveCpp/lib/cmake/AdaptiveCpp ${GITHUB_WORKSPACE}/tests
+          make -j2
+      - name: run CPU tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/build-tests-cpu
+          ACPP_VISIBILITY_MASK="omp" LD_LIBRARY_PATH=/opt/AdaptiveCpp/lib ./sycl_tests
+      - name: run CPU SSCP tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/build-tests-sscp
+          ACPP_VISIBILITY_MASK="omp" LD_LIBRARY_PATH=/opt/AdaptiveCpp/lib ./sycl_tests
+      - name: run PSTL tests on CPU
+        run: |
+          cd ${GITHUB_WORKSPACE}/build-tests-sscp
+          ACPP_VISIBILITY_MASK="omp" LD_LIBRARY_PATH=/opt/AdaptiveCpp/lib ./pstl_tests

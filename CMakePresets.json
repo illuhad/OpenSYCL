@@ -1,0 +1,127 @@
+{
+	"version": 6,
+	"configurePresets": [
+		{
+			"name": "linux-base-debug",
+			"generator": "Unix Makefiles",
+			"binaryDir": "${sourceDir}/build",
+			"installDir": "/opt/AdaptiveCpp",
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Linux"
+			},
+			"cacheVariables": {
+				"CMAKE_CXX_COMPILER": "/usr/bin/clang++-16",
+				"CLANG_EXECUTABLE_PATH": "/usr/bin/clang++-16",
+				"CMAKE_BUILD_TYPE": "Debug",
+				"WITH_ACCELERATED_CPU": "ON",
+				"WITH_SSCP_COMPILER": "ON",
+				"LLVM_DIR": "/usr/lib/llvm-16/cmake/",
+				"CMAKE_INSTALL_PREFIX": "/opt/AdaptiveCpp",
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+				"CMAKE_BUILD_WITH_INSTALL_RPATH": "TRUE"
+			}
+		},
+		{
+			"name": "all-backends-debug",
+			"displayName": "Debug config with all backends",
+			"inherits": "linux-base-debug",
+			"cacheVariables": {
+				"WITH_CUDA_BACKEND": "ON",
+				"WITH_ROCM_BACKEND": "ON",
+				"WITH_LEVEL_ZERO_BACKEND": "ON",
+				"WITH_OPENCL_BACKEND": "ON",
+				"CUDA_TOOLKIT_ROOT_DIR": "/usr/local/cuda",
+				"ROCM_PATH": "/opt/rocm"
+			}
+		},
+		{
+			"name": "linux-base-release",
+			"displayName": "Release config",
+			"inherits": "linux-base-debug",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "all-backends-release",
+			"displayName": "Release config with all backends",
+			"inherits": [
+				"linux-base-release",
+				"all-backends-debug"
+			]
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "jarvis-debug",
+			"displayName": "Debug build on jarvis with all backends",
+			"configurePreset": "all-backends-debug",
+			"jobs": 32
+		},
+		{
+			"name": "jarvis-release",
+			"displayName": "Release build on jarvis with all backends",
+			"configurePreset": "all-backends-release",
+			"jobs": 32
+		},
+		{
+			"name": "ci-debug",
+			"displayName": "Debug build with all backends in Github CI",
+			"configurePreset": "all-backends-debug",
+			"jobs": 2
+		},
+		{
+			"name": "ci-release",
+			"displayName": "Release build with all backends in Github CI",
+			"configurePreset": "all-backends-release",
+			"jobs": 2
+		}
+	],
+	"packagePresets": [
+		{
+			"name": "package-linux",
+			"displayName": "Packages for Linux",
+			"hidden": true,
+			"packageDirectory": "${sourceDir}/_packages",
+			"generators": [
+				"DEB",
+				"RPM"
+			],
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Linux"
+			}
+		},
+		{
+			"name": "package-debug",
+			"displayName": "Package debug build",
+			"inherits": "package-linux",
+			"configurePreset": "all-backends-debug"
+		},
+		{
+			"name": "package-release",
+			"displayName": "Package release build",
+			"inherits": "package-linux",
+			"configurePreset": "all-backends-release"
+		}
+	],
+	"workflowPresets": [
+		{
+			"name": "workflow-release",
+			"displayName": "Workflow for creating release packages",
+			"steps": [
+				{
+					"type": "configure",
+					"name": "all-backends-release"
+				},
+				{
+					"type": "package",
+					"name": "package-release"
+				}
+			]
+		}
+	]
+}
