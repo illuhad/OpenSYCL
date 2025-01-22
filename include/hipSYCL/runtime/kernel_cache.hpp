@@ -8,24 +8,22 @@
  * See file LICENSE in the project root for full license details.
  */
 // SPDX-License-Identifier: BSD-2-Clause
-#include <cstdint>
-#include <string>
-#include <unordered_map>
-#include <mutex>
-#include <cassert>
-#include <memory>
-#include <optional>
-#include <array>
-#include "hipSYCL/common/hcf_container.hpp"
-#include "hipSYCL/common/small_map.hpp"
-#include "hipSYCL/common/unordered_dense.hpp"
-#include "hipSYCL/common/stable_running_hash.hpp"
-#include "hipSYCL/runtime/kernel_configuration.hpp"
-#include "hipSYCL/runtime/device_id.hpp"
-#include "hipSYCL/runtime/error.hpp"
-
 #ifndef HIPSYCL_RT_KERNEL_CACHE_HPP
 #define HIPSYCL_RT_KERNEL_CACHE_HPP
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <unordered_map>
+
+#include "hipSYCL/common/hcf_container.hpp"
+#include "hipSYCL/common/unordered_dense.hpp"
+#include "hipSYCL/runtime/device_id.hpp"
+#include "hipSYCL/runtime/error.hpp"
+#include "hipSYCL/runtime/kernel_configuration.hpp"
 
 namespace hipsycl {
 namespace rt {
