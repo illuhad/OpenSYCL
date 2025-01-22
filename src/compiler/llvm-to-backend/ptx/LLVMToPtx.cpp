@@ -230,17 +230,25 @@ bool LLVMToPtxTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
 
   auto InputFile = llvm::sys::fs::TempFile::create("acpp-sscp-ptx-%%%%%%.bc");
   auto OutputFile = llvm::sys::fs::TempFile::create("acpp-sscp-ptx-%%%%%%.s");
-  
-  std::string OutputFilename = OutputFile->TmpName;
-  
-  auto E = InputFile.takeError();
-  if(E){
+
+  if (auto Err = InputFile.takeError()) {
     this->registerError("LLVMToPtx: Could not create temp file: "+InputFile->TmpName);
     return false;
   }
 
-  AtScopeExit DestroyInputFile([&]() { auto Err = InputFile->discard(); });
-  AtScopeExit DestroyOutputFile([&]() { auto Err = OutputFile->discard(); });
+  if (auto Err = OutputFile.takeError()) {
+    this->registerError("LLVMToPtx: Could not create temp file: " + OutputFile->TmpName);
+    return false;
+  }
+
+  AtScopeExit DestroyInputFile([&]() {
+    if (auto Err = InputFile->discard())
+      ;
+  });
+  AtScopeExit DestroyOutputFile([&]() {
+    if (auto Err = OutputFile->discard())
+      ;
+  });
 
   std::error_code EC;
   llvm::raw_fd_ostream InputStream{InputFile->FD, false};
@@ -265,7 +273,7 @@ bool LLVMToPtxTranslator::translateToBackendFormat(llvm::Module &FlavoredModule,
                                                     "-x",
                                                     "ir",
                                                     "-o",
-                                                    OutputFilename,
+                                                    OutputFile->TmpName,
                                                     InputFile->TmpName};
   if(IsFastMath)
     Invocation.push_back("-ffast-math");
