@@ -1,0 +1,46 @@
+Bug reference https://github.com/AdaptiveCpp/AdaptiveCpp/issues/1433
+
+For better installation procedure I followed the instructions on this page https://github.com/AdaptiveCpp/AdaptiveCpp/blob/b61a18683cb66734b3d6a1d02ab3e3cb6f1d7d8d/.github/workflows/macos.yml
+
+The pre required packages and software  executed were 
+
+```
+set +e
+brew update
+brew install cmake
+brew install libomp
+brew install boost
+set -e
+```
+
+${GITHUB_WORKSPACE} is the root directory of the AdaptiveCpp
+```
+git clone https://github.com/AdaptiveCpp/AdaptiveCpp
+cd AdaptiveCpp
+mkdir build && cd build
+OMP_ROOT=`brew list libomp | grep libomp.a | sed -E "s/\/lib\/.*//"`
+cmake .. \
+-DOpenMP_ROOT=$OMP_ROOT \
+-DWITH_OPENCL_BACKEND=OFF \
+-DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install
+make -j 2 install VERBOSE=ON
+```
+
+
+To test it out 
+``` 
+ls ${GITHUB_WORKSPACE}/build/install/bin 
+acpp            acpp-hcf-tool   acpp-info       syclcc          syclcc-clang
+```
+```
+${GITHUB_WORKSPACE}/build/install/bin/acpp
+ 
+the output will show something resembling this :
+acpp [AdaptiveCpp compilation driver], Copyright (C) 2018-2023 Aksel Alpay and the AdaptiveCpp project
+  AdaptiveCpp version: 24.02.0+git.b61a1868.20240408.branch.develop
+  Installation root: /Users/adithyalbhat/github/adaptive_cpp/AdaptiveCpp/build/install
+  Available runtime backends:
+```
+
+export PATH="${GITHUB_WORKSPACE}/build/install/bin:$PATH"
+After the export make sure to restart your shell . You will now be able to invoke acpp with just the command acpp and you do not need to invoke the entire path .
