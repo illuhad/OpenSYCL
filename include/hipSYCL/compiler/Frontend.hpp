@@ -264,7 +264,7 @@ public:
   bool VisitFunctionDecl(clang::FunctionDecl *f) {
     if(!f)
       return true;
-    
+
     this->processFunctionDecl(f);
 
     return true;
@@ -307,8 +307,21 @@ public:
           CustomAttributes::SyclKernel.isAttachedTo(F)) {
 
         auto* NewAttr = clang::CUDAGlobalAttr::CreateImplicit(Instance.getASTContext());
-        
+
         F->addAttr(NewAttr);
+
+        // create amdgpu_flat_work_group_size attribute to allow sub_groups outside of [128, 256]
+        // first we need to create Expressions containing the workgroup-sizes
+        auto sizeType = Instance.getASTContext().getSizeType();
+        auto minFlatWorkgroupSize = llvm::APInt(Instance.getASTContext().getTypeSize(sizeType), 64);
+        auto maxFlatWorkgroupSize = llvm::APInt(Instance.getASTContext().getTypeSize(sizeType), 1024);
+        auto* minFlatWorkgroupExpr = clang::IntegerLiteral::Create(Instance.getASTContext(), minFlatWorkgroupSize, sizeType, clang::SourceLocation{});
+        auto* maxFlatWorkgroupExpr = clang::IntegerLiteral::Create(Instance.getASTContext(), maxFlatWorkgroupSize, sizeType, clang::SourceLocation{});
+
+        // to finally create the attribute itself
+        auto * NewAMDGPUAttr = clang::AMDGPUFlatWorkGroupSizeAttr::CreateImplicit(Instance.getASTContext(), minFlatWorkgroupExpr , maxFlatWorkgroupExpr);
+
+        F->addAttr(NewAMDGPUAttr);
       }
     }
 
