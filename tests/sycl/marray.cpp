@@ -11,6 +11,7 @@
 
 
 #include <numeric>
+#include <limits>
 #include <type_traits>
 
 #include "sycl_test_suite.hpp"
@@ -152,5 +153,106 @@ BOOST_AUTO_TEST_CASE(marray_constexpr) {
   constexpr sycl::marray<int, 4> arr3{123, arr2, 456};
 }
 #endif
+
+BOOST_AUTO_TEST_SUITE(marray_builtins)
+
+#define SYCL_BUILTIN(builtin, ...) sycl::builtin(__VA_ARGS__)
+#define STD_BUILTIN(builtin, ...) std::builtin(__VA_ARGS__)
+
+#define MARRAY_BUILTINS_UNARY_TEST(builtin, low, high)                                             \
+  BOOST_AUTO_TEST_CASE(marray_builtin_test_##builtin) {                                            \
+    std::default_random_engine generator;                                                          \
+    std::uniform_real_distribution<double> distribution(low, high);                                \
+    sycl::queue q;                                                                                 \
+    auto *data = sycl::malloc_shared<sycl::marray<double, 32>>(1, q);                              \
+    auto *result = sycl::malloc_shared<sycl::marray<double, 32>>(1, q);                            \
+    for (int i = 0; i < data[0].size(); ++i)                                                       \
+      data[0][i] = distribution(generator);                                                        \
+    sycl::queue{}.single_task([=]() { result[0] = SYCL_BUILTIN(builtin, data[0]); }).wait();       \
+    for (int i = 0; i < data[0].size(); ++i)                                                       \
+      BOOST_TEST(result[0][i] == STD_BUILTIN(builtin, data[0][i]),                                 \
+                 boost::test_tools::tolerance(1e-8));                                              \
+  }
+
+#define MARRAY_BUILTINS_BINARY_TEST(builtin, low, high)                                            \
+  BOOST_AUTO_TEST_CASE(marray_builtin_test_##builtin) {                                            \
+    std::default_random_engine generator;                                                          \
+    std::uniform_real_distribution<double> distribution(low, high);                                \
+    sycl::queue q;                                                                                 \
+    auto *data1 = sycl::malloc_shared<sycl::marray<double, 32>>(1, q);                             \
+    auto *data2 = sycl::malloc_shared<sycl::marray<double, 32>>(1, q);                             \
+    auto *result = sycl::malloc_shared<sycl::marray<double, 32>>(1, q);                            \
+    for (int i = 0; i < data1[0].size(); ++i)                                                      \
+      data1[0][i] = distribution(generator);                                                       \
+    for (int i = 0; i < data2[0].size(); ++i)                                                      \
+      data2[0][i] = distribution(generator);                                                       \
+    sycl::queue{}                                                                                  \
+        .single_task([=]() { result[0] = SYCL_BUILTIN(builtin, data1[0], data2[0]); })             \
+        .wait();                                                                                   \
+    for (int i = 0; i < data1[0].size(); ++i)                                                      \
+      BOOST_TEST(result[0][i] == STD_BUILTIN(builtin, data1[0][i], data2[0][i]),                   \
+                 boost::test_tools::tolerance(1e-8));                                              \
+  }
+
+#define MARRAY_TEST_MIN std::numeric_limits<double>::lowest()
+#define MARRAY_TEST_MAX std::numeric_limits<double>::max()
+
+MARRAY_BUILTINS_UNARY_TEST(acos, -1., 1.)
+MARRAY_BUILTINS_UNARY_TEST(acosh, 1., MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(acospi) // No acospi in std::
+MARRAY_BUILTINS_UNARY_TEST(asin, -1., 1.)
+MARRAY_BUILTINS_UNARY_TEST(asinh, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+
+MARRAY_BUILTINS_UNARY_TEST(atan, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(atanh, -1, 1)
+// MARRAY_BUILTINS_UNARY_TEST(atanpi) // No atanpi in std::
+MARRAY_BUILTINS_UNARY_TEST(cbrt, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(ceil, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(cos, 0, 2 * 3.14)
+MARRAY_BUILTINS_UNARY_TEST(cosh, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(cospi) // No cospi in std::
+MARRAY_BUILTINS_UNARY_TEST(erfc, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(erf, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(exp, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(exp2, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(exp10) // No exp10 in std::
+MARRAY_BUILTINS_UNARY_TEST(expm1, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(fabs, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(floor, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(lgamma, 0.1, 10)  // TODO: This test fails and the result of
+// sycl::lgamma are pretty different from std::lgamma, are they the same?
+MARRAY_BUILTINS_UNARY_TEST(log, 0.1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(log2, 0.1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(log10, 0.1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(log1p, -1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(logb, 0.1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(rint, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(round, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(rsqrt) // No rsqrt in std::
+MARRAY_BUILTINS_UNARY_TEST(sin, 0, 2 * 3.14)
+MARRAY_BUILTINS_UNARY_TEST(sinh, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_UNARY_TEST(sinpi) // No sinpi in std::
+MARRAY_BUILTINS_UNARY_TEST(sqrt, 0, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(tan, 0, 2 * 3.14)
+MARRAY_BUILTINS_UNARY_TEST(tanh, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(tgamma, 0.1, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_UNARY_TEST(trunc, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+
+MARRAY_BUILTINS_BINARY_TEST(atan2, 0.1, 1)
+// MARRAY_BUILTINS_BINARY_TEST(atan2pi) // not atan2pi in std::
+MARRAY_BUILTINS_BINARY_TEST(copysign, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_BINARY_TEST(fdim, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_BINARY_TEST(fmax, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_BINARY_TEST(fmin, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_BINARY_TEST(fmod, -1, 1)
+MARRAY_BUILTINS_BINARY_TEST(hypot, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_BINARY_TEST(maxmag, MARRAY_TEST_MIN, MARRAY_TEST_MAX) // No maxmag in std::
+// MARRAY_BUILTINS_BINARY_TEST(minmag, MARRAY_TEST_MIN, MARRAY_TEST_MAX) // No minmag in std::
+MARRAY_BUILTINS_BINARY_TEST(nextafter, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+MARRAY_BUILTINS_BINARY_TEST(pow, MARRAY_TEST_MIN, MARRAY_TEST_MAX)
+// MARRAY_BUILTINS_BINARY_TEST(powr, MARRAY_TEST_MIN, MARRAY_TEST_MAX) // No powr in std::
+MARRAY_BUILTINS_BINARY_TEST(remainder, -1, 1)
+
+BOOST_AUTO_TEST_SUITE_END() // marray_builtins
 
 BOOST_AUTO_TEST_SUITE_END()
