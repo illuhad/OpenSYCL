@@ -96,6 +96,8 @@ Not all backends necessarily support all models. The following compilation flows
 * Generic SSCP requires clang 14 or newer.
 
 
+It is recommended to check the [following talk](https://www.youtube.com/watch?v=LKFYNQ75k8Q) on IWOCL & SYCLcon. The corresponding paper is [here](https://github.com/OpenSYCL/OpenSYCL#citing-open-sycl). 
+
 ## Compiler support to accelerate nd_range parallel_for on CPUs (omp.accelerated)
 
 The `nd_range parallel_for` paradigm is not efficiently implementable without explicit compiler support.
