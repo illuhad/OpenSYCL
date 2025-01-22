@@ -198,6 +198,42 @@ public:
     return typename setting_trait<S>::type{};
   }
 
+  template <setting S> void set(typename setting_trait<S>::type value) {
+    if constexpr(S == setting::debug_level){
+      _debug_level = value;
+    } else if constexpr (S == setting::scheduler_type) {
+      _scheduler_type = value;
+    } else if constexpr (S == setting::visibility_mask) {
+      _visibility_mask = value;
+    } else if constexpr (S == setting::dag_req_optimization_depth) {
+      _dag_requirement_optimization_depth = value;
+    } else if constexpr (S == setting::mqe_lane_statistics_max_size) {
+      _mqe_lane_statistics_max_size = value;
+    } else if constexpr (S == setting::mqe_lane_statistics_decay_time_sec) {
+      _mqe_lane_statistics_decay_time_sec = value;
+    } else if constexpr (S == setting::default_selector_behavior) {
+      _default_selector_behavior = value;
+    } else if constexpr (S == setting::hcf_dump_directory) {
+      _hcf_dump_directory = value;
+    } else if constexpr (S == setting::persistent_runtime) {
+      _persistent_runtime = value;
+    } else if constexpr (S == setting::max_cached_nodes) {
+      _max_cached_nodes = value;
+    } else if constexpr(S == setting::sscp_failed_ir_dump_directory) {
+      _sscp_failed_ir_dump_directory = value;
+    } else if constexpr(S == setting::gc_trigger_batch_size) {
+      _gc_trigger_batch_size = value;
+    } else if constexpr(S == setting::ocl_no_shared_context) {
+      _ocl_no_shared_context = value;
+    } else if constexpr(S == setting::ocl_show_all_devices) {
+      _ocl_show_all_devices = value;
+    } else if constexpr(S == setting::no_jit_cache_population) {
+        _no_jit_cache_population = value;
+    } else if constexpr(S == setting::adaptivity_level) {
+      _adaptivity_level = value;
+    }
+  }
+
   settings() {
     int default_debug_level = 2;
 #ifdef HIPSYCL_DEBUG_LEVEL
