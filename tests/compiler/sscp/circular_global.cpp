@@ -1,3 +1,4 @@
+// REQUIRES: sscp
 // RUN: %acpp %s -o %t --acpp-targets=generic
 // RUN: %t
 // RUN: %acpp %s -o %t --acpp-targets=generic -O3

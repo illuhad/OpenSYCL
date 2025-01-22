@@ -1,3 +1,4 @@
+// REQUIRES: stdpar
 // RUN: %acpp %s -o %t --acpp-targets=generic -O3 --acpp-stdpar --acpp-stdpar-unconditional-offload
 // RUN: %t | FileCheck %s
 
