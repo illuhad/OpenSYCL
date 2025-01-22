@@ -3,7 +3,7 @@ target_compile_definitions(acpp-appdb-tool PRIVATE -DHIPSYCL_TOOL_COMPONENT)
 target_include_directories(acpp-appdb-tool PRIVATE 
     ${HIPSYCL_SOURCE_DIR}
     ${HIPSYCL_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include)
+    ${ACPP_BINARY_ROOT}/include)
 
 
 target_link_libraries(acpp-appdb-tool PRIVATE acpp-common)

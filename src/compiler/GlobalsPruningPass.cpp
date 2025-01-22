@@ -42,7 +42,7 @@ bool hipsycl::compiler::GlobalsPruningPassLegacy::runOnModule(llvm::Module &M) {
   return true;
 }
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) || defined(ACPP_LLVM_COMPONENT)
 llvm::PreservedAnalyses
 hipsycl::compiler::GlobalsPruningPass::run(llvm::Module &M,
                                            llvm::ModuleAnalysisManager &AM) {

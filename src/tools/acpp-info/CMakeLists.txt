@@ -4,9 +4,13 @@ target_compile_definitions(acpp-info PRIVATE -DHIPSYCL_TOOL_COMPONENT)
 target_include_directories(acpp-info PRIVATE 
     ${HIPSYCL_SOURCE_DIR}
     ${HIPSYCL_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include)
+    ${ACPP_BINARY_ROOT}/include)
 
 target_link_libraries(acpp-info PRIVATE acpp-rt)
+
+if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(acpp-info PRIVATE /EHs)
+endif()
 
 # Make sure that acpp-info uses compatible sanitizer flags for sanitized runtime builds
 target_link_libraries(acpp-info PRIVATE ${ACPP_RT_SANITIZE_FLAGS})

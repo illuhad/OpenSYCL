@@ -9,10 +9,11 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/runtime/backend_loader.hpp"
-#include "hipSYCL/runtime/application.hpp"
-#include "hipSYCL/runtime/dylib_loader.hpp"
-#include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/common/config.hpp"
+#include "hipSYCL/common/debug.hpp"
+#include "hipSYCL/common/dylib_loader.hpp"
+#include "hipSYCL/common/filesystem.hpp"
+#include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/device_id.hpp"
 
 #include <cassert>
@@ -20,7 +21,7 @@
 #ifndef _WIN32
 #include <dlfcn.h>
 #else
-#include <windows.h> 
+#include <windows.h>
 #endif
 
 #include HIPSYCL_CXX_FILESYSTEM_HEADER
@@ -28,12 +29,13 @@ namespace fs = HIPSYCL_CXX_FILESYSTEM_NAMESPACE;
 
 namespace {
 
-using namespace hipsycl::rt::detail;
+using namespace hipsycl::common;
 bool load_plugin(const std::string &filename, void *&handle_out,
                  std::string &backend_name_out) {
-  if(void *handle = load_library(filename, "backend_loader")) {
-    if(void* symbol = get_symbol_from_library(handle, "hipsycl_backend_plugin_get_name", "backend_loader"))
-    {
+  std::string message = "";
+  if (void *handle = load_library(filename, message)) {
+    if (void *symbol = get_symbol_from_library(
+            handle, "hipsycl_backend_plugin_get_name", message)) {
       auto get_name =
           reinterpret_cast<decltype(&hipsycl_backend_plugin_get_name)>(symbol);
 
@@ -42,23 +44,36 @@ bool load_plugin(const std::string &filename, void *&handle_out,
 
       return true;
     } else {
-      close_library(handle, "backend_loader");
+      if (!message.empty()) {
+        HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
+        message = "";
+      }
+      close_library(handle, message);
+      if (!message.empty()) {
+        HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+      }
       return false;
     }
   } else {
+    if (!message.empty()) {
+      HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
+    }
     return false;
-  } 
+  }
 }
 
 hipsycl::rt::backend *create_backend(void *plugin_handle) {
   assert(plugin_handle);
 
-  if(void *symbol = get_symbol_from_library(plugin_handle, "hipsycl_backend_plugin_create", "backend_loader"))
-  {
+  std::string message;
+  if (void *symbol = get_symbol_from_library(
+          plugin_handle, "hipsycl_backend_plugin_create", message)) {
     auto create_backend_func =
         reinterpret_cast<decltype(&hipsycl_backend_plugin_create)>(symbol);
 
     return create_backend_func();
+  } else if (!message.empty()) {
+    HIPSYCL_DEBUG_WARNING << "[backend_loader] " << message << std::endl;
   }
   return nullptr;
 }
@@ -67,22 +82,36 @@ std::vector<fs::path> get_plugin_search_paths()
 {
   std::vector<fs::path> paths;
 #ifndef _WIN32
+  #define ACPP_BACKEND_LIB_FOLDER "lib"
   Dl_info info;
   if (dladdr(reinterpret_cast<void*>(&get_plugin_search_paths), &info)) {
     paths.emplace_back(fs::path{info.dli_fname}.parent_path() / "hipSYCL");
   }
-  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / "lib" / "hipSYCL";
 #else
+  #define ACPP_BACKEND_LIB_FOLDER "bin"
+
   if(HMODULE handle = GetModuleHandleA(HIPSYCL_RT_LIBRARY_NAME))
   {
     std::vector<char> path_buffer(MAX_PATH);
-    if(GetModuleFileNameA(handle, path_buffer.data(), path_buffer.size()))
+    while(GetModuleFileNameA(handle, path_buffer.data(), path_buffer.size()) == path_buffer.size())
     {
-      paths.emplace_back(fs::path{path_buffer.data()}.parent_path() / "hipSYCL");
+      path_buffer.resize(path_buffer.size() * 2);
+      if(path_buffer.size() >= 1024*1024) // 1MB paths? sure. I think it's time to give up...
+        break;
     }
+    AddDllDirectory(fs::path{path_buffer.data()}.parent_path().c_str());
+    paths.emplace_back(fs::path{path_buffer.data()}.parent_path() / "hipSYCL");
   }
-  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / "bin" / "hipSYCL";
 #endif
+
+  if(auto install_dir = hipsycl::common::filesystem::get_install_directory(); !install_dir.empty()) {
+#ifdef _WIN32
+    AddDllDirectory((fs::path(install_dir) / ACPP_BACKEND_LIB_FOLDER).c_str());
+#endif
+    paths.emplace_back(fs::path(install_dir) / ACPP_BACKEND_LIB_FOLDER / "hipSYCL");
+  }
+
+  const auto install_prefixed_path = fs::path{HIPSYCL_INSTALL_PREFIX} / ACPP_BACKEND_LIB_FOLDER / "hipSYCL";
 
   if(paths.empty()
       || !fs::is_directory(paths.back())
@@ -120,7 +149,7 @@ namespace rt {
 
 void backend_loader::query_backends() {
   std::vector<fs::path> backend_lib_paths = get_plugin_search_paths();
-
+  
 #ifdef __APPLE__
   std::string shared_lib_extension = ".dylib";
 #elif defined(_WIN32)
@@ -154,7 +183,11 @@ void backend_loader::query_backends() {
                                 << std::endl;
               _handles.emplace_back(std::make_pair(backend_name, handle));
             } else {
-              close_library(handle, "backend_loader");
+              std::string message = "";
+              close_library(handle, message);
+              if(!message.empty()) {
+                HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+              }
             }
           }
         }
@@ -166,7 +199,12 @@ void backend_loader::query_backends() {
 backend_loader::~backend_loader() {
   for (auto &handle : _handles) {
     assert(handle.second);
-    close_library(handle.second, "backend_loader");
+
+    std::string message;
+    close_library(handle.second, message);
+    if (!message.empty()) {
+      HIPSYCL_DEBUG_ERROR << "[backend_loader] " << message << std::endl;
+    }
   }
 }
 
@@ -202,5 +240,5 @@ backend *backend_loader::create(const std::string &name) const {
   return nullptr;
 }
 
-}
+} // namespace rt
 } // namespace hipsycl

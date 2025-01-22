@@ -359,11 +359,10 @@ result cuda_queue::submit_kernel(kernel_operation &op, const dag_node_ptr& node)
 }
 
 result cuda_queue::submit_prefetch(prefetch_operation& op, const dag_node_ptr& node) {
+  cuda_instrumentation_guard instrumentation{this, op, node.get()};
 #ifndef _WIN32
-  
   cudaError_t err = cudaSuccess;
   
-  cuda_instrumentation_guard instrumentation{this, op, node.get()};
   if (op.get_target().is_host()) {
     err = cudaMemPrefetchAsync(op.get_pointer(), op.get_num_bytes(),
                                         cudaCpuDeviceId, get_stream());
@@ -672,15 +671,15 @@ result cuda_queue::submit_sscp_kernel_from_code_object(
         ptx_image, target_arch_name, hcf_object, kernel_names, device, _config};
     result r = exec_obj->get_build_result();
 
-    HIPSYCL_DEBUG_INFO
-        << "cuda_queue: Successfully compiled SSCP kernels to module " << exec_obj->get_module()
-        << std::endl;
-
     if(!r.is_success()) {
       register_error(r);
       delete exec_obj;
       return nullptr;
     }
+
+    HIPSYCL_DEBUG_INFO
+        << "cuda_queue: Successfully compiled SSCP kernels to module " << exec_obj->get_module()
+        << std::endl;
 
     if(kernel_names.size() == 1)
       exec_obj->get_jit_output_metadata().kernel_retained_arguments_indices =

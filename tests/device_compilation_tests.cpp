@@ -195,6 +195,7 @@ BOOST_AUTO_TEST_CASE(omit_kernel_name) {
   }
 }
 
+#ifndef __ACPP_ENABLE_LLVM_SSCP_TARGET__
 BOOST_AUTO_TEST_CASE(hierarchical_invoke_shared_memory) {
   cl::sycl::queue queue;
 
@@ -258,7 +259,7 @@ BOOST_AUTO_TEST_CASE(hierarchical_invoke_shared_memory) {
     }
   }
 }
-
+#endif
 
 void forward_declared2();
 

@@ -15,6 +15,7 @@
 #include "hipSYCL/compiler/llvm-to-backend/GlobalInliningAttributorPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/KnownGroupSizeOptPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/LLVMToBackend.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/KnownPtrParamAlignmentOptPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/ProcessS2ReflectionPass.hpp"
 #include "hipSYCL/compiler/llvm-to-backend/Utils.hpp"
@@ -23,7 +24,6 @@
 #include "hipSYCL/compiler/utils/ProcessFunctionAnnotationsPass.hpp"
 #include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
-#include "hipSYCL/sycl/access.hpp"
 
 #include <cstdint>
 

@@ -8,7 +8,7 @@ set(HIPSYCL_RT_EXTRA_CXX_FLAGS "")
 set(HIPSYCL_RT_EXTRA_LINKER_FLAGS "")
 
 
-list(INSERT CMAKE_MODULE_PATH 0 "${PROJECT_SOURCE_DIR}/cmake/")
+list(INSERT CMAKE_MODULE_PATH 0 "${ACPP_SOURCE_ROOT}/cmake/")
 find_package(Filesystem REQUIRED "${ACPP_FILESYSTEM_SEARCH_OPTIONS}")
 set(CXX_FILESYSTEM_HEADER "${CXX_FILESYSTEM_HEADER}" PARENT_SCOPE)
 set(CXX_FILESYSTEM_NAMESPACE "${CXX_FILESYSTEM_NAMESPACE}" PARENT_SCOPE)
@@ -31,7 +31,6 @@ add_library(acpp-rt SHARED
   backend.cpp
   backend_loader.cpp
   device_id.cpp
-  dylib_loader.cpp
   operations.cpp
   data.cpp
   inorder_executor.cpp
@@ -50,10 +49,13 @@ add_library(acpp-rt SHARED
   adaptivity_engine.cpp
   generic/async_worker.cpp
   hw_model/memcpy.cpp
-  serialization/serialization.cpp)
+  serialization/serialization.cpp
+  support/reflection.cpp
+)
 
 target_compile_options(acpp-rt PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
-target_link_libraries(acpp-rt PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS} acpp-common Threads::Threads)
+target_link_libraries(acpp-rt PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS} Threads::Threads)
+target_link_libraries(acpp-rt PUBLIC acpp-common)
 
 # syclcc already knows about these include directories, but clangd-based tooling does not.
 # Specifying them explicitly ensures that IDEs can resolve all hipSYCL includes correctly.
@@ -63,13 +65,16 @@ target_include_directories(acpp-rt
     $<INSTALL_INTERFACE:include>
   PRIVATE
     ${HIPSYCL_SOURCE_DIR}
-    ${PROJECT_BINARY_DIR}/include
+    ${ACPP_BINARY_ROOT}/include
 )
 
 # to get the search path next to the rt lib, we need to know the output name, so set it explicitly.
 set(HIPSYCL_RT_LIBRARY_OUTPUT_NAME "acpp-rt")
 if(WIN32)
   set_target_properties(acpp-rt PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS On)
+  if(ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(acpp-rt PRIVATE /EHs)
+  endif()
 
   # ensure actual output and expected are equivalent
   set_target_properties(acpp-rt PROPERTIES RUNTIME_OUTPUT_NAME ${HIPSYCL_RT_LIBRARY_OUTPUT_NAME})
@@ -117,7 +122,6 @@ if(WITH_CUDA_BACKEND)
   target_include_directories(rt-backend-cuda PRIVATE
     ${HIPSYCL_SOURCE_DIR}/include
     ${CUDA_TOOLKIT_ROOT_DIR}/include)
-  
   target_link_libraries(rt-backend-cuda PRIVATE acpp-rt ${CUDA_LIBS})
 
   target_compile_options(rt-backend-cuda PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
@@ -130,6 +134,10 @@ if(WITH_CUDA_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-cuda PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(rt-backend-cuda PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-cuda
@@ -163,11 +171,11 @@ if(WITH_ROCM_BACKEND)
   else()
     # Supress warnings because wrongly set CXX arguments
     target_compile_options(rt-backend-hip PRIVATE -Wno-unused-command-line-argument)
-    target_link_libraries(rt-backend-hip PRIVATE acpp-rt  hip::host)
+    target_link_libraries(rt-backend-hip PRIVATE hip::host)
   endif()
 
   target_compile_options(rt-backend-hip PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
-  target_link_libraries(rt-backend-hip PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
+  target_link_libraries(rt-backend-hip PRIVATE acpp-rt ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
 
   if(WITH_SSCP_COMPILER)
     target_compile_definitions(rt-backend-hip PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
@@ -176,6 +184,10 @@ if(WITH_ROCM_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-hip PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(rt-backend-hip PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-hip
@@ -206,6 +218,10 @@ if(WITH_LEVEL_ZERO_BACKEND)
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-ze PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(rt-backend-ze PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-ze
@@ -267,6 +283,10 @@ if(WITH_OPENCL_BACKEND)
   if(is_ipo_supported)
     set_property(TARGET rt-backend-ocl PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
   endif()
+  
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(rt-backend-ocl PRIVATE /EHs)
+  endif()
 
   install(TARGETS rt-backend-ocl
         LIBRARY DESTINATION lib/hipSYCL
@@ -281,6 +301,17 @@ if(WITH_CPU_BACKEND)
     omp/omp_hardware_manager.cpp
     omp/omp_queue.cpp)
 
+  if(TARGET omp) # ACPP_LLVM_COMPONENT with openmp active
+    set(OpenMP_CXX_INCLUDE_DIRS ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+    get_target_property(hipSYCL_OpenMP_CXX_LIBRARIES omp LINK_LIBRARIES)
+    string(JOIN " " hipSYCL_OpenMP_CXX_LIBRARIES ${hipSYCL_OpenMP_CXX_LIBRARIES})
+    set(hipSYCL_OpenMP_CXX_LIBRARIES "${LIBOMP_LIB_NAME} ${hipSYCL_OpenMP_CXX_LIBRARIES}")
+    
+    set(OMP_COMPILE_FLAGS ${OPENMP_TEST_OPENMP_FLAGS})
+    separate_arguments(OMP_COMPILE_FLAGS)
+    set(OMP_TARGET omp)
+    get_target_property(OMP_INCLUDE_DIR omp BINARY_DIR)
+  else()
     # OMP_ROOT and/or OpenMP_ROOT is not defined by default on Mac
     if (APPLE)
       if (NOT DEFINED OpenMP_ROOT AND NOT DEFINED OMP_ROOT)
@@ -297,16 +328,6 @@ if(WITH_CPU_BACKEND)
     endif()
 
     find_package(OpenMP REQUIRED)
-    
-    target_include_directories(rt-backend-omp PRIVATE
-      ${HIPSYCL_SOURCE_DIR}/include 
-      ${PROJECT_BINARY_DIR}/include)
-
-    if(WITH_SSCP_COMPILER)
-      target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)
-      target_compile_definitions(rt-backend-omp PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
-      target_link_libraries(rt-backend-omp PRIVATE llvm-to-host)
-    endif()
 
     if(APPLE)
       if(CMAKE_VERSION VERSION_LESS "3.16")
@@ -316,25 +337,42 @@ if(WITH_CPU_BACKEND)
       string(JOIN " " hipSYCL_OpenMP_CXX_LIBRARIES ${OpenMP_CXX_LIBRARIES})
       set(hipSYCL_OpenMP_CXX_LIBRARIES ${hipSYCL_OpenMP_CXX_LIBRARIES} PARENT_SCOPE)
     endif()
-  
-  list(LENGTH OpenMP_CXX_LIBRARIES OpenMP_CXX_LIBRARIES_LENGTH)
-  if(WIN32 AND ${OpenMP_CXX_LIBRARIES_LENGTH} EQUAL 0)
-    # FindOpenMP does a bad job here, finding any library.. so add some more hints..
-    find_library(hipSYCL_OpenMP_libomp_LIBRARY
-      NAMES libomp libgomp libiomp5 HINTS
-      ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
-      ${LLVM_PREFIX_DIR}/lib
-    )
-    target_link_libraries(rt-backend-omp PRIVATE ${hipSYCL_OpenMP_libomp_LIBRARY})
+
+    list(LENGTH OpenMP_CXX_LIBRARIES OpenMP_CXX_LIBRARIES_LENGTH)
+    if(WIN32 AND ${OpenMP_CXX_LIBRARIES_LENGTH} EQUAL 0)
+      # FindOpenMP does a bad job here, finding any library.. so add some more hints..
+      find_library(hipSYCL_OpenMP_libomp_LIBRARY
+        NAMES libomp libgomp libiomp5 HINTS
+        ${CMAKE_${LANG}_IMPLICIT_LINK_DIRECTORIES}
+        ${LLVM_PREFIX_DIR}/lib
+      )
+      target_link_libraries(rt-backend-omp PRIVATE ${hipSYCL_OpenMP_libomp_LIBRARY})
+    endif()
+
+    set(OMP_TARGET OpenMP::OpenMP_CXX)
   endif()
 
-  target_link_libraries(rt-backend-omp PRIVATE acpp-rt  OpenMP::OpenMP_CXX)
+  target_include_directories(rt-backend-omp PRIVATE
+    ${HIPSYCL_SOURCE_DIR}/include 
+    ${ACPP_BINARY_ROOT}/include
+    ${OMP_INCLUDE_DIR})
 
-  target_compile_options(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
+  if(WITH_SSCP_COMPILER)
+    target_sources(rt-backend-omp PRIVATE omp/omp_code_object.cpp)
+    target_compile_definitions(rt-backend-omp PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
+    target_link_libraries(rt-backend-omp PRIVATE llvm-to-host)
+  endif()
+  target_link_libraries(rt-backend-omp PRIVATE acpp-rt ${OMP_TARGET})
+
+  target_compile_options(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS} ${OMP_COMPILE_FLAGS})
   target_link_libraries(rt-backend-omp PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
 
   if(is_ipo_supported)
     set_property(TARGET rt-backend-omp PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+  endif()
+  
+  if(WIN32 AND ACPP_LLVM_COMPONENT AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
+    target_compile_options(rt-backend-omp PRIVATE /EHs)
   endif()
 
   install(TARGETS rt-backend-omp

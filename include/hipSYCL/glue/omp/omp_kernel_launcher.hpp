@@ -91,6 +91,7 @@ extern "C" size_t __acpp_cbs_local_id_y;
 extern "C" size_t __acpp_cbs_local_id_z;
 
 template <int Dim, class Function>
+[[clang::annotate("acpp_cbs_kernel_dimension", Dim)]]
 HIPSYCL_LOOP_SPLIT_ND_KERNEL __attribute__((noinline))
 inline void iterate_nd_range_omp(Function f, const sycl::id<Dim> &&group_id, const sycl::range<Dim> num_groups,
   HIPSYCL_LOOP_SPLIT_ND_KERNEL_LOCAL_SIZE_ARG const sycl::range<Dim> local_size, const sycl::id<Dim> offset,

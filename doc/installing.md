@@ -135,12 +135,48 @@ The default installation prefix is `/usr/local`. Change this to your liking.
 * See the ROCm [installation instructions](install-rocm.md) instructions.
 
 
+#### Building an LLVM toolchain with AdaptiveCpp linked in (experimental, but also for Windows)
+
+Another advanced installation procedure is to build AdaptiveCpp as part of LLVM.
+This makes it easy to ship a full AdaptiveCpp installation with all dependencies.
+Additionally, it enables systems (such as Windows), where LLVM plugins are supported in a limited manner, to use most of the compiler features AdaptiveCpp has to offer.
+When building AdaptiveCpp as part of LLVM, you can choose to link the AdaptiveCpp compiler components into the LLVM tools (`clang`, `opt`, ...).
+Therefore, it is no longer necessary to separately build AdaptiveCpp's LLVM plugins.
+
+To get started, select an appropriate LLVM version that you want to use.
+AdaptiveCpp only actively supports released LLVM versions.
+Typically, the second newest released version is a solid choice.
+
+Then, clone LLVM and AdaptiveCpp and install (set the environment variables on top, before copy-pasting).
+You will want to use the `ninja` build tool for the build step, install it, if you don't have it, yet.
+For Windows instructions see the [wiki](https://github.com/AdaptiveCpp/AdaptiveCpp/wiki/Using-AdaptiveCpp-on-Windows).
+```bash
+export LLVM_VERSION=18 # set me!
+export LLVM_PARALLEL_LINK_JOBS=8 # set me (when using the default GNU ld, allow around 4GB of RAM per link job)
+export ACPP_INSTALL_PREFIX=`pwd`/../../install # set me
+export USE_CCACHE=ON # leave set to on, if you have ccache/sccache installed for faster rebuild times
+git clone https://github.com/llvm/llvm-project --single-branch -b release/${LLVM_VERSION}.x llvm
+cd llvm
+git clone https://github.com/AdaptiveCpp/AdaptiveCpp AdaptiveCpp
+mkdir -p build && cd build
+cmake ../llvm -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${ACPP_INSTALL_PREFIX} -DLLVM_TARGETS_TO_BUILD="X86;NVPTX;AMDGPU" -DLLVM_ENABLE_PROJECTS="clang;openmp;lld" -DLLVM_PARALLEL_LINK_JOBS=${LLVM_PARALLEL_LINK_JOBS} -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON -DLLVM_CCACHE_BUILD=${USE_CCACHE} -DLLVM_EXTERNAL_PROJECTS=AdaptiveCpp -DLLVM_EXTERNAL_ADAPTIVECPP_SOURCE_DIR=`pwd`/../AdaptiveCpp -DLLVM_ADAPTIVECPP_LINK_INTO_TOOLS=ON
+ninja install
+```
+
+Now, you should have a full LLVM installation with AdaptiveCpp built-in.
+You can use it just, as you would normally: using the CMake integration or using the `acpp` tool directly.
+
+##### Caveats
+- On Windows, this requires LLVM 18 or above.
+- When using the `omp` target plus the `hip` target with this LLVM 17+ is required. Any other target specification should work with versions lower than this.
+- It is experimental. So test your usecase well :)
+
 ## Installation from source (Mac)
 
 On Mac, only the CPU backends are supported. The required steps are analogous to Linux.
 
 ## Installation from source (Windows)
 
-For experimental building on Windows (CPU and CUDA backends) see the corresponding [wiki](https://github.com/OpenSYCL/OpenSYCL/wiki/Using-AdaptiveCpp-on-Windows).
-The `omp.accelerated` CPU compilation flow is unsupported on Windows.
+For experimental building on Windows (CPU and CUDA backends) see the corresponding [wiki](https://github.com/AdaptiveCpp/AdaptiveCpp/wiki/Using-AdaptiveCpp-on-Windows).
+The `omp.accelerated` and `generic` compilation flows are only supported when building AdaptiveCpp as part of LLVM (see above).
 

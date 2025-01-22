@@ -15,6 +15,7 @@
 
 #include "hipSYCL/compiler/llvm-to-backend/LLVMToBackend.hpp"
 #include "hipSYCL/common/debug.hpp"
+#include "hipSYCL/common/filesystem.hpp"
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/ADT/SmallSet.h>
@@ -343,6 +344,7 @@ private:
   llvm::SmallDenseMap<llvm::Type*, llvm::Type*> PointerWrapperTypes;
 };
 
+std::string getClangPath();
 
 }
 }

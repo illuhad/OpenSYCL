@@ -5,7 +5,7 @@
 # Remove our own modules from cmake's module search path to prevent
 # it from recursively calling this module when using find_package(CUDA) below.
 set(OLD_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
-list(REMOVE_ITEM CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+list(REMOVE_ITEM CMAKE_MODULE_PATH "${ACPP_SOURCE_ROOT}/cmake/")
 
 if (CMAKE_VERSION VERSION_LESS 3.17)
    find_package(CUDA QUIET)
@@ -37,9 +37,13 @@ else()
       # the CUDAToolkit_LIBRARY_DIR directory and check if this is the right directory.
       if (CMAKE_VERSION VERSION_LESS 3.18 OR NOT CUDAToolkit_LIBRARY_ROOT)
          get_filename_component(CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_DIR} DIRECTORY)
+         if(WIN32)
+            # Nested in architecture specific folder.
+            get_filename_component(CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_ROOT} DIRECTORY)
+         endif()
 
          if (NOT EXISTS "${CUDAToolkit_LIBRARY_ROOT}/nvvm")
-            message(WARNING "CUDAToolkit_LIBRARY_ROOT does not point to the correct directory, try setting it manually. Detected CUDA installation cannot be used.")
+            message(WARNING "CUDAToolkit_LIBRARY_ROOT ${CUDAToolkit_LIBRARY_ROOT} does not point to the correct directory, try setting it manually. Detected CUDA installation cannot be used.")
             set(CUDAToolkit_FOUND FALSE)
          endif()
       endif()

@@ -11,6 +11,11 @@
 #ifndef HIPSYCL_LLVM_TO_BACKEND_HPP
 #define HIPSYCL_LLVM_TO_BACKEND_HPP
 
+#ifndef _WIN32
+#define ACPP_BACKEND_API_EXPORT
+#else
+#define ACPP_BACKEND_API_EXPORT __declspec(dllexport)
+#endif
 
 // Note: This file should not include any LLVM headers or include
 // dependencies that rely on LLVM headers in order to not spill
@@ -23,6 +28,7 @@
 #include <typeinfo>
 #include <functional>
 #include "AddressSpaceMap.hpp"
+#include "hipSYCL/compiler/llvm-to-backend/NameHandling.hpp"
 #include "hipSYCL/glue/llvm-sscp/jit-reflection/queries.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
