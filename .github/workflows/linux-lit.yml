@@ -20,7 +20,7 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh ${{matrix.clang}}
-          sudo apt install libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev llvm-${{matrix.clang}}-dev
+          sudo apt-get install -y libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev llvm-${{matrix.clang}}-dev
           sudo python -m pip install lit
           sudo ln -s /usr/bin/FileCheck-${{matrix.clang}} /usr/bin/FileCheck
           if [[ "${{matrix.clang}}" == "16" ]]; then
@@ -29,7 +29,7 @@ jobs:
           fi
       - name: install boost (from apt)
         run: |
-          sudo apt install libboost-all-dev
+          sudo apt-get install -y libboost-all-dev
       - name: setup build env
         run: |
           export CXXFLAGS="$CXXFLAGS"
@@ -82,9 +82,9 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh ${{matrix.clang}}
-          sudo apt install libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev llvm-${{matrix.clang}}-dev
+          sudo apt-get install -y libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev llvm-${{matrix.clang}}-dev
           # install with --force-overwrite since this tries to overwrite some clang README
-          sudo apt install -o DPkg::options::="--force-overwrite" libclang-rt-${{matrix.clang}}-dev
+          sudo apt-get install -y -o DPkg::options::="--force-overwrite" libclang-rt-${{matrix.clang}}-dev
           sudo python -m pip install lit
           sudo ln -s /usr/bin/FileCheck-${{matrix.clang}} /usr/bin/FileCheck
           if [[ "${{matrix.clang}}" == "16" ]]; then
@@ -93,13 +93,13 @@ jobs:
           fi
       - name: install boost (from apt)
         run: |
-          sudo apt install libboost-all-dev
+          sudo apt-get install -y libboost-all-dev
       - name: Install OpenCL
         run: |
           wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
-          sudo apt update
-          sudo apt install intel-oneapi-runtime-opencl-2024 intel-oneapi-runtime-compilers-2024 ocl-icd-libopencl1 ocl-icd-opencl-dev
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-runtime-opencl-2024 intel-oneapi-runtime-compilers-2024 ocl-icd-libopencl1 ocl-icd-opencl-dev
       - name: build AdaptiveCpp
         run: |
           mkdir build && cd build

@@ -23,11 +23,11 @@ jobs:
         submodules: 'recursive'
     - name: Install OpenCL development files
       run : |
-        sudo apt update
-        sudo apt install ocl-icd-opencl-dev
+        sudo apt-get update
+        sudo apt-get install -y ocl-icd-opencl-dev
     - name: Install TBB for PSTL tests
       run : |
-        sudo apt install libtbb-dev
+        sudo apt-get install -y libtbb-dev
     - name: install Level Zero
       run : |
         wget https://github.com/oneapi-src/level-zero/releases/download/v1.2.3/level-zero-devel_1.2.3+u18.04_amd64.deb
@@ -43,25 +43,25 @@ jobs:
       run: |
         [[ ${{matrix.os}} == ubuntu-20.04 ]] && CODENAME=xenial
         [[ ${{matrix.os}} == ubuntu-22.04 ]] && CODENAME=jammy
-        sudo apt install libnuma-dev cmake unzip
+        sudo apt-get install -y libnuma-dev cmake unzip
         wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
         echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/${{matrix.rocm}} $CODENAME main" | sudo tee /etc/apt/sources.list.d/rocm.list
         printf 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' | sudo tee /etc/apt/preferences.d/rocm-pin-600
-        sudo apt update
-        sudo apt install rocm-dev
+        sudo apt-get update
+        sudo apt-get install -y rocm-dev
     - name: install LLVM
       run: |
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
         sudo ./llvm.sh ${{matrix.clang}}
-        sudo apt install libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev
+        sudo apt-get install -y libclang-${{matrix.clang}}-dev clang-tools-${{matrix.clang}} libomp-${{matrix.clang}}-dev
         if [[ "${{matrix.clang}}" == "16" ]]; then
           sudo rm -r /usr/lib/clang/16*
           sudo ln -s /usr/lib/llvm-16/lib/clang/16 /usr/lib/clang/16
         fi
     - name: install boost (from apt)
       run: |
-        sudo apt install libboost-all-dev
+        sudo apt-get install -y libboost-all-dev
     - name: build AdaptiveCpp
       run: |
         mkdir build && cd build
@@ -138,8 +138,8 @@ jobs:
         swap-storage: true
     - name: install dependencies
       run : |
-        sudo apt update
-        sudo apt install cmake libboost-all-dev wget gpg curl
+        sudo apt-get update
+        sudo apt-get install -y cmake libboost-all-dev wget gpg curl
     - name: install nvcxx
       run: |
         MAJOR_VERSION=$(echo ${{matrix.nvhpc}} | sed 's/\..*//')
