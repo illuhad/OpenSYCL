@@ -13,19 +13,7 @@
 
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalVariable.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include "CompilationState.hpp"
-
-#include "hipSYCL/common/debug.hpp"
-
-#include <unordered_set>
-#include <vector>
 
 namespace hipsycl {
 namespace compiler {

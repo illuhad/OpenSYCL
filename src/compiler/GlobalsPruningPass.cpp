@@ -1,5 +1,11 @@
 #include "hipSYCL/compiler/GlobalsPruningPass.hpp"
 
+#include "hipSYCL/common/debug.hpp"
+#include "hipSYCL/compiler/CompilationState.hpp"
+
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Module.h"
+
 namespace {
 bool canGlobalVariableBeRemoved(llvm::GlobalVariable *G) {
   G->removeDeadConstantUsers();

@@ -45,6 +45,7 @@
 
 #if LLVM_VERSION_MAJOR < 16
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/IR/LegacyPassManager.h"
 #endif
 
 namespace hipsycl {
