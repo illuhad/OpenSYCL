@@ -15,6 +15,7 @@
 #include "../backend.hpp"
 #include "../detail/data_layout.hpp"
 #include "../detail/mem_fence.hpp"
+#include "../detail/tuple_helper.hpp"
 #include "../functional.hpp"
 #include "../group.hpp"
 #include "../group_traits.hpp"
@@ -26,6 +27,7 @@
 #include "../half.hpp"
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 /// TODO: This file is a placeholder, most group algorithms are unimplemented!
 
@@ -150,6 +152,24 @@ __acpp_group_broadcast(
   for (int i = 0; i < N; ++i) {
     result[i] = __acpp_group_broadcast(g, x[i], local_linear_id);
   }
+  return result;
+}
+
+template<size_t... Is, class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+void __acpp_group_broadcast_tuple_impl(std::index_sequence<Is...>, Group g, Tup& ret, Tup x, typename Group::linear_id_type local_linear_id = 0) {
+  // Fold over comma for assignment
+  ((detail::tuple_get<Is>(ret) = __acpp_group_broadcast(g, detail::tuple_get<Is>(x), local_linear_id)), ...);
+};
+
+template <class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+std::enable_if_t<(sizeof(Tup) > 8 && detail::is_tuple_like_v<Tup>), Tup>
+__acpp_group_broadcast(Group g, Tup x, typename Group::linear_id_type local_linear_id = 0) {
+  Tup result{x};
+  __acpp_group_broadcast_tuple_impl(std::make_index_sequence<std::tuple_size_v<Tup>>{}, g, result, x, local_linear_id);
   return result;
 }
 
@@ -1075,6 +1095,23 @@ __acpp_shift_group_left(Group g, marray<T,N> x, typename Group::linear_id_type d
   return result;
 }
 
+template<size_t... Is, class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+void __acpp_shift_group_left_tuple_impl(std::index_sequence<Is...>, Group g, Tup& ret, Tup x, typename Group::linear_id_type delta) {
+  // Fold over comma for assignment
+  ((detail::tuple_get<Is>(ret) = __acpp_shift_group_left(g, detail::tuple_get<Is>(x), delta), __acpp_group_barrier(g)), ...);
+};
+
+template <class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+std::enable_if_t<(sizeof(Tup) > 8 && detail::is_tuple_like_v<Tup>), Tup>
+__acpp_shift_group_left(Group g, Tup x, typename Group::linear_id_type delta = 1) {
+  Tup result{x};
+  __acpp_shift_group_left_tuple_impl(std::make_index_sequence<std::tuple_size_v<Tup>>{}, g, result, x, delta);
+  return result;
+}
+
 // shift_right
 template <int Dim, typename T>
 HIPSYCL_BUILTIN std::enable_if_t<(sizeof(T) <= 8), T> __acpp_shift_group_right(
@@ -1139,6 +1176,23 @@ __acpp_shift_group_right(Group g, marray<T,N> x, typename Group::linear_id_type 
   return result;
 }
 
+template<size_t... Is, class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+void __acpp_shift_group_right_tuple_impl(std::index_sequence<Is...>, Group g, Tup& ret, Tup x, typename Group::linear_id_type delta) {
+  // Fold over comma for assignment
+  ((detail::tuple_get<Is>(ret) = __acpp_shift_group_right(g, detail::tuple_get<Is>(x), delta), __acpp_group_barrier(g)), ...);
+};
+
+template <class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+std::enable_if_t<(sizeof(Tup) > 8 && detail::is_tuple_like_v<Tup>), Tup>
+__acpp_shift_group_right(Group g, Tup x, typename Group::linear_id_type delta = 1) {
+  Tup result{x};
+  __acpp_shift_group_right_tuple_impl(std::make_index_sequence<std::tuple_size_v<Tup>>{}, g, result, x, delta);
+  return result;
+}
+
 // permute_group_by_xor
 template <int Dim, typename T>
 HIPSYCL_BUILTIN std::enable_if_t<(sizeof(T) <= 8), T> __acpp_permute_group_by_xor(
@@ -1199,6 +1253,23 @@ __acpp_permute_group_by_xor(Group g, marray<T,N> x, typename Group::linear_id_ty
     result[i] = __acpp_permute_group_by_xor(g, x[i], mask);
     __acpp_group_barrier(g);
   }
+  return result;
+}
+
+template<size_t... Is, class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+void __acpp_permute_group_by_xor_tuple_impl(std::index_sequence<Is...>, Group g, Tup& ret, Tup x, typename Group::linear_id_type mask) {
+  // Fold over comma for assignment
+  ((detail::tuple_get<Is>(ret) = __acpp_permute_group_by_xor(g, detail::tuple_get<Is>(x), mask), __acpp_group_barrier(g)), ...);
+};
+
+template <class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+std::enable_if_t<(sizeof(Tup) > 8 && detail::is_tuple_like_v<Tup>), Tup>
+__acpp_permute_group_by_xor(Group g, Tup x, typename Group::linear_id_type mask) {
+  Tup result{x};
+  __acpp_permute_group_by_xor_tuple_impl(std::make_index_sequence<std::tuple_size_v<Tup>>{}, g, result, x, mask);
   return result;
 }
 
@@ -1273,6 +1344,22 @@ __acpp_select_from_group(Group g, marray<T,N> x, typename Group::id_type remote_
   return result;
 }
 
+template<size_t... Is, class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+void __acpp_select_from_group_tuple_impl(std::index_sequence<Is...>, Group g, Tup& ret, Tup x, typename Group::id_type remote_local_id) {
+  // Fold over comma for assignment
+  ((detail::tuple_get<Is>(ret) = __acpp_select_from_group(g, detail::tuple_get<Is>(x), remote_local_id), __acpp_group_barrier(g)), ...);
+};
+
+template <class Group, typename Tup,
+          std::enable_if_t<is_group_v<std::decay_t<Group>>, bool> = true>
+HIPSYCL_BUILTIN
+std::enable_if_t<(sizeof(Tup) > 8 && detail::is_tuple_like_v<Tup>), Tup>
+__acpp_select_from_group(Group g, Tup x, typename Group::id_type remote_local_id) {
+  Tup result{x};
+  __acpp_select_from_group_tuple_impl(std::make_index_sequence<std::tuple_size_v<Tup>>{}, g, result, x, remote_local_id);
+  return result;
+}
 } // namespace sycl::detail::sscp_builtins
 } // namespace hipsycl
 
