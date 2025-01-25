@@ -117,7 +117,7 @@ if(WITH_CUDA_BACKEND)
   target_include_directories(rt-backend-cuda PRIVATE
     ${HIPSYCL_SOURCE_DIR}/include
     ${CUDA_TOOLKIT_ROOT_DIR}/include)
-  
+
   target_link_libraries(rt-backend-cuda PRIVATE acpp-rt ${CUDA_LIBS})
 
   target_compile_options(rt-backend-cuda PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
@@ -192,7 +192,7 @@ if(WITH_LEVEL_ZERO_BACKEND)
     ze/ze_event.cpp
     ze/ze_queue.cpp
     ze/ze_code_object.cpp)
-  
+
   target_include_directories(rt-backend-ze PRIVATE ${HIPSYCL_SOURCE_DIR}/include)
   target_link_libraries(rt-backend-ze PRIVATE acpp-rt -lze_loader)
 
@@ -228,7 +228,7 @@ if(WITH_OPENCL_BACKEND)
   endif()
   add_library(ocl-headers INTERFACE)
   target_include_directories(ocl-headers INTERFACE ${ocl-headers_SOURCE_DIR})
-  
+
   FetchContent_Declare(ocl-cxx-headers
     GIT_REPOSITORY https://github.com/KhronosGroup/OpenCL-CLHPP
     GIT_TAG 0bdbbfe5ecda42cff50c96cc5e33527f42fcbd45
@@ -250,7 +250,9 @@ if(WITH_OPENCL_BACKEND)
     ocl/ocl_allocator.cpp
     ocl/ocl_usm.cpp
     ocl/ocl_event.cpp
-    ocl/ocl_queue.cpp)
+    ocl/ocl_queue.cpp
+
+  )
 
   target_include_directories(rt-backend-ocl PRIVATE ${HIPSYCL_SOURCE_DIR}/include)
   target_link_libraries(rt-backend-ocl PRIVATE acpp-rt ${OpenCL_LIBRARIES} ocl-headers ocl-cxx-headers)
@@ -273,6 +275,33 @@ if(WITH_OPENCL_BACKEND)
         ARCHIVE DESTINATION lib/hipSYCL)
 endif()
 
+if (WITH_UNIFIED_RUNTIME_BACKEND)
+    add_library(rt-backend-ur SHARED
+            ur/ur_utils.hpp
+            ur/ur_backend.cpp
+            ur/ur_allocator.cpp
+            ur/ur_queue.cpp
+            ur/ur_event.cpp
+            ur/ur_hardware_manager.cpp
+            ur/ur_code_object.cpp
+    )
+
+    target_include_directories(rt-backend-ur PRIVATE ${HIPSYCL_SOURCE_DIR}/include)
+
+    find_package(unified-runtime REQUIRED)
+    target_link_libraries(rt-backend-ur PRIVATE acpp-rt unified-runtime::ur_headers unified-runtime::ur_loader)
+
+    if (WITH_SSCP_COMPILER)
+        target_compile_definitions(rt-backend-ur PRIVATE -DHIPSYCL_WITH_SSCP_COMPILER)
+        target_link_libraries(rt-backend-ur PRIVATE llvm-to-spirv)
+    endif ()
+
+    install(TARGETS rt-backend-ur
+            LIBRARY DESTINATION lib/hipSYCL
+            ARCHIVE DESTINATION lib/hipSYCL)
+
+endif ()
+
 if(WITH_CPU_BACKEND)
   add_library(rt-backend-omp SHARED
     omp/omp_allocator.cpp
@@ -285,7 +314,7 @@ if(WITH_CPU_BACKEND)
     if (APPLE)
       if (NOT DEFINED OpenMP_ROOT AND NOT DEFINED OMP_ROOT)
         execute_process(COMMAND brew list libomp
-        COMMAND grep libomp.a 
+        COMMAND grep libomp.a
         COMMAND sed -E "s/\\/lib\\/.*//"
         OUTPUT_VARIABLE DefaultOMP_ROOT
         OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -297,9 +326,9 @@ if(WITH_CPU_BACKEND)
     endif()
 
     find_package(OpenMP REQUIRED)
-    
+
     target_include_directories(rt-backend-omp PRIVATE
-      ${HIPSYCL_SOURCE_DIR}/include 
+      ${HIPSYCL_SOURCE_DIR}/include
       ${PROJECT_BINARY_DIR}/include)
 
     if(WITH_SSCP_COMPILER)
@@ -316,7 +345,7 @@ if(WITH_CPU_BACKEND)
       string(JOIN " " hipSYCL_OpenMP_CXX_LIBRARIES ${OpenMP_CXX_LIBRARIES})
       set(hipSYCL_OpenMP_CXX_LIBRARIES ${hipSYCL_OpenMP_CXX_LIBRARIES} PARENT_SCOPE)
     endif()
-  
+
   list(LENGTH OpenMP_CXX_LIBRARIES OpenMP_CXX_LIBRARIES_LENGTH)
   if(WIN32 AND ${OpenMP_CXX_LIBRARIES_LENGTH} EQUAL 0)
     # FindOpenMP does a bad job here, finding any library.. so add some more hints..
