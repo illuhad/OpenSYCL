@@ -12,7 +12,7 @@
 #ifndef HIPSYCL_SSCP_DETAIL_HIPLIKE_SCAN_BUILTINS_HPP
 #define HIPSYCL_SSCP_DETAIL_HIPLIKE_SCAN_BUILTINS_HPP
 
-#include "../core_typed.hpp"
+#include "../core_typed_linear_id.hpp"
 #include "../subgroup.hpp"
 #include "broadcast.hpp"
 #include "scan_subgroup.hpp"
