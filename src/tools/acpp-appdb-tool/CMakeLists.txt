@@ -13,4 +13,4 @@ target_link_libraries(acpp-appdb-tool PRIVATE ${ACPP_RT_SANITIZE_FLAGS})
 target_compile_options(acpp-appdb-tool PRIVATE ${ACPP_RT_SANITIZE_FLAGS})
 set_target_properties(acpp-appdb-tool PROPERTIES INSTALL_RPATH ${base}/../lib/)
 
-install(TARGETS acpp-appdb-tool DESTINATION bin)
+install(TARGETS acpp-appdb-tool DESTINATION ${CMAKE_INSTALL_BINDIR})

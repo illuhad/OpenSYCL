@@ -39,7 +39,7 @@ function(create_llvm_based_library)
   # We need symbolic functions for stdpar
   target_link_libraries(${target} PRIVATE ${HIPSYCL_STDPAR_RT_LINKER_FLAGS})
 
-  install(TARGETS ${target} DESTINATION lib/hipSYCL/llvm-to-backend)
+  install(TARGETS ${target} DESTINATION ${CMAKE_INSTALL_LIBDIR}/hipSYCL/llvm-to-backend)
 endfunction()
 
 function(create_llvm_to_backend_library)
@@ -86,7 +86,7 @@ function(create_llvm_to_backend_tool)
   target_compile_definitions(${target}-tool PRIVATE -DHIPSYCL_TOOL_COMPONENT)
   target_link_libraries(${target}-tool PRIVATE ${target})
 
-  install(TARGETS ${target}-tool DESTINATION lib/hipSYCL/llvm-to-backend)
+  install(TARGETS ${target}-tool DESTINATION ${CMAKE_INSTALL_LIBDIR}/hipSYCL/llvm-to-backend)
 endfunction()
 
 function(add_hipsycl_llvm_backend)

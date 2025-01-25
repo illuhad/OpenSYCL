@@ -5,4 +5,4 @@ target_include_directories(acpp-hcf-tool PRIVATE
     ${HIPSYCL_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/include)
 
-install(TARGETS acpp-hcf-tool DESTINATION bin)
+install(TARGETS acpp-hcf-tool DESTINATION ${CMAKE_INSTALL_BINDIR})

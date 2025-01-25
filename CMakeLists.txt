@@ -75,6 +75,17 @@ endif()
 
 project(hipSYCL VERSION ${ACPP_VERSION_MAJOR}.${ACPP_VERSION_MINOR}.${ACPP_VERSION_PATCH})
 
+IF (NOT CMAKE_INSTALL_BINDIR)
+  set(CMAKE_INSTALL_BINDIR bin)
+ENDIF()
+
+IF (NOT CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR lib)
+ENDIF()
+
+IF (NOT CMAKE_INSTALL_INCLUDEDIR)
+  set(CMAKE_INSTALL_INCLUDEDIR include)
+ENDIF()
 
 set(HIPSYCL_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 
@@ -611,29 +622,29 @@ configure_file(
   ${PROJECT_SOURCE_DIR}/include/hipSYCL/common/config.hpp.in
   ${PROJECT_BINARY_DIR}/include/hipSYCL/common/config.hpp)
 
-install(DIRECTORY include/CL DESTINATION include/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY include/SYCL DESTINATION include/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY include/CL DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY include/SYCL DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
 
-install(DIRECTORY include/hipSYCL DESTINATION include/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY include/hipSYCL DESTINATION include/AdaptiveCpp/ FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY include/hipSYCL/std DESTINATION include/AdaptiveCpp/hipSYCL/ )
-install(FILES ${PROJECT_BINARY_DIR}/include/hipSYCL/common/config.hpp DESTINATION include/AdaptiveCpp/hipSYCL/common/)
+install(DIRECTORY include/hipSYCL DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/ FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY include/hipSYCL DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/ FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY include/hipSYCL/std DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/hipSYCL/ )
+install(FILES ${PROJECT_BINARY_DIR}/include/hipSYCL/common/config.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/hipSYCL/common/)
 
 # This part of the installation process can be simplified once the source directory has been
 # renamed from hipSYCL to AdaptiveCpp.
-install(DIRECTORY include/hipSYCL/ DESTINATION include/AdaptiveCpp/AdaptiveCpp FILES_MATCHING PATTERN "*.hpp")
-install(DIRECTORY include/hipSYCL/ DESTINATION include/AdaptiveCpp/AdaptiveCpp FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY include/hipSYCL/std/ DESTINATION include/AdaptiveCpp/AdaptiveCpp/std )
-install(FILES ${PROJECT_BINARY_DIR}/include/hipSYCL/common/config.hpp DESTINATION include/AdaptiveCpp/AdaptiveCpp/common/)
+install(DIRECTORY include/hipSYCL/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/AdaptiveCpp FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY include/hipSYCL/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/AdaptiveCpp FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY include/hipSYCL/std/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/AdaptiveCpp/std )
+install(FILES ${PROJECT_BINARY_DIR}/include/hipSYCL/common/config.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/AdaptiveCpp/common/)
 
 if(NOT WIN32)
 # Windows is case-insensitive, so don't copy to sycl/sycl.hpp as
 # we already have SYCL/sycl.hpp
-install(FILES include/SYCL/sycl.hpp DESTINATION include/AdaptiveCpp/sycl/)
+install(FILES include/SYCL/sycl.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/AdaptiveCpp/sycl/)
 endif()
-install(PROGRAMS bin/acpp DESTINATION bin)
-install(PROGRAMS bin/acpp DESTINATION bin RENAME syclcc)
-install(PROGRAMS bin/acpp DESTINATION bin RENAME syclcc-clang)
+install(PROGRAMS bin/acpp DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(PROGRAMS bin/acpp DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME syclcc)
+install(PROGRAMS bin/acpp DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME syclcc-clang)
 
 
 install(FILES ${ACPP_CONFIG_FILE_PATH}/acpp-core.json DESTINATION ${ACPP_CONFIG_FILE_INSTALL_DIR})
@@ -653,7 +664,7 @@ include(GNUInstallDirs)
 
 
 set(HIPSYCL_INSTALL_CMAKE_DIR
-  "lib/cmake/hipSYCL" CACHE PATH "Install path for legacy CMake config files")
+  "${CMAKE_INSTALL_LIBDIR}/cmake/hipSYCL" CACHE PATH "Install path for legacy CMake config files")
 
 # Set relative paths for install root in the following variables so that
 # configure_package_config_file will generate paths relative whatever is
@@ -701,7 +712,7 @@ mark_as_advanced(
 # Legacy module (Open SYCL)
 
 set(OPENSYCL_INSTALL_CMAKE_DIR
-  "lib/cmake/OpenSYCL" CACHE PATH "Install path for CMake config files")
+  "${CMAKE_INSTALL_LIBDIR}/cmake/OpenSYCL" CACHE PATH "Install path for CMake config files")
 
 # Set relative paths for install root in the following variables so that
 # configure_package_config_file will generate paths relative whatever is
@@ -749,7 +760,7 @@ mark_as_advanced(
 
 
 set(ADAPTIVECPP_INSTALL_CMAKE_DIR
-  "lib/cmake/AdaptiveCpp" CACHE PATH "Install path for CMake config files")
+  "${CMAKE_INSTALL_LIBDIR}/cmake/AdaptiveCpp" CACHE PATH "Install path for CMake config files")
 
 # Set relative paths for install root in the following variables so that
 # configure_package_config_file will generate paths relative whatever is
