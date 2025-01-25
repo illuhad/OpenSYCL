@@ -78,6 +78,7 @@ endif()
 add_library(acpp-clang MODULE
   AdaptiveCppClangPlugin.cpp
   GlobalsPruningPass.cpp
+  SMCPCompatPass.cpp
   ${SSCP_COMPILER}
   ${STDPAR_COMPILER}
   ${REFLECTION_BUILTINS}

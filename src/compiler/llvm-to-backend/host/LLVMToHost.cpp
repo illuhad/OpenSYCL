@@ -12,6 +12,7 @@
 
 #include "hipSYCL/common/debug.hpp"
 #include "hipSYCL/common/filesystem.hpp"
+#include "hipSYCL/compiler/utils/LLVMUtils.hpp"
 #include "hipSYCL/compiler/cbs/IRUtils.hpp"
 #include "hipSYCL/compiler/cbs/KernelFlattening.hpp"
 #include "hipSYCL/compiler/cbs/PipelineBuilder.hpp"
@@ -89,6 +90,16 @@ bool LLVMToHostTranslator::toBackendFlavor(llvm::Module &M, PassHandler &PH) {
 
   if (!this->linkBitcodeFile(M, BuiltinBitcodeFile))
     return false;
+
+  // Internalize all constant global variables that don't their definition
+  // to be imported from external sources - this is fine because llvm-to-backend
+  // lowering always happens *after* linking in all dependencies, and therefore
+  // no symbols need to be exported to other TUs, ever.
+  for(auto& GV : M.globals()) {
+    if (GV.isConstant() && GV.hasInitializer() &&
+        !llvmutils::starts_with(GV.getName(), "__acpp_cbs"))
+      GV.setLinkage(llvm::GlobalValue::LinkageTypes::InternalLinkage);
+  }
 
   llvm::ModulePassManager MPM;
   PH.ModuleAnalysisManager->clear(); // for some reason we need to reset the analyses... otherwise

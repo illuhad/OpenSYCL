@@ -447,8 +447,10 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_clz(T x) noexcept {
   using Usigned = typename std::make_unsigned<T>::type; 
 
   constexpr T diff = CHAR_BIT*(sizeof(__acpp_int32) - sizeof(Usigned));
+  constexpr T size = CHAR_BIT*sizeof(T);
 
-  return __clz(static_cast<__acpp_int32>(static_cast<Usigned>(x)))-diff;
+  auto v = static_cast<__acpp_int32>(static_cast<Usigned>(x));
+  return v ? __clz(v)-diff : size;
   
 }
 
@@ -459,7 +461,7 @@ template <class T,
 HIPSYCL_HIPLIKE_BUILTIN T __acpp_clz(T x) noexcept {
 
   return __clz(static_cast<__acpp_int32>(x));
-  
+
 }
 
 template <class T,
