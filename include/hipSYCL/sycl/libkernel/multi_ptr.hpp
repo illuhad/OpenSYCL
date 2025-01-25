@@ -144,9 +144,8 @@ template <typename dataT, int dimensions, access::mode accessmode, access::targe
           access::placeholder isPlaceholder>
 class accessor;
 
-template <typename dataT, int dimensions = 1>
-using local_accessor = accessor<dataT, dimensions, access::mode::read_write, access::target::local,
-                                access::placeholder::false_t>;
+template <typename dataT, int dimensions>
+class local_accessor;
 
 template <typename T> struct remove_decoration {
   using type = T;

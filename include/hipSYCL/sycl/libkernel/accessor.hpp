@@ -398,6 +398,61 @@ private:
   mutable sycl::id<dimensions> _access_id;
 };
 
+template <typename dataT, int dimensions, int current_dimension = 1>
+class local_subscript_proxy
+{
+  ACPP_UNIVERSAL_TARGET
+  static constexpr bool can_invoke_access(int current_dim, int dim) {
+    return current_dim == dim - 1;
+  }
+public:
+  static_assert(dimensions > 1, "dimension must be > 1");
+  
+  using accessor_type = sycl::local_accessor<dataT, dimensions>;
+  using reference = typename accessor_type::reference;
+
+  using next_subscript_proxy =
+      local_subscript_proxy<dataT, dimensions, current_dimension + 1>;
+
+  ACPP_UNIVERSAL_TARGET
+  local_subscript_proxy(const accessor_type *original_accessor,
+                  sycl::id<dimensions> current_access_id)
+      : _original_accessor{original_accessor}, _access_id{current_access_id} {}
+
+
+  template <int D = dimensions,
+            int C = current_dimension,
+            std::enable_if_t<!can_invoke_access(C, D), bool> = true>
+  ACPP_UNIVERSAL_TARGET
+  next_subscript_proxy operator[](size_t index) const {
+    return create_next_proxy(index);
+  }
+
+  template <int D = dimensions,
+            int C = current_dimension,
+            std::enable_if_t<can_invoke_access(C, D), bool> = true>
+  ACPP_UNIVERSAL_TARGET
+  reference operator[](size_t index) const {
+    return invoke_value_access(index);
+  }
+private:
+  ACPP_UNIVERSAL_TARGET
+  reference invoke_value_access(size_t index) const {
+    // Set the last index
+    _access_id[dimensions - 1] = index;
+    return (*_original_accessor)[_access_id];
+  }
+
+  ACPP_UNIVERSAL_TARGET
+  next_subscript_proxy create_next_proxy(size_t next_id) const {
+    _access_id[current_dimension] = next_id;
+    return next_subscript_proxy{_original_accessor, _access_id};
+  }
+
+  const accessor_type *_original_accessor;
+  mutable sycl::id<dimensions> _access_id;
+};
+
 
 // This function is defined in handler.hpp
 template<class AccessorType>
@@ -1913,7 +1968,7 @@ template <typename dataT,
           int dimensions,
           access::mode accessmode,
           access::placeholder isPlaceholder>
-class accessor<
+class [[deprecated("use sycl::local_accessor instead")]] accessor<
     dataT,
     dimensions,
     accessmode,
@@ -2153,6 +2208,226 @@ private:
   specialized<range<dimensions>> _num_elements;
 };
 
+template <typename dataT, int dimensions = 1>
+class local_accessor
+{
+  using address = detail::local_memory::address;
+public:
+
+  using value_type = dataT;
+  using reference = value_type &;
+  using const_reference = const dataT &;
+  template <access::decorated IsDecorated>
+  using accessor_ptr =
+      multi_ptr<value_type, access::address_space::local_space, IsDecorated>;
+  using iterator = detail::accessor_iterator<value_type, dimensions, local_accessor>;
+  using const_iterator = detail::accessor_iterator<const value_type, dimensions, local_accessor>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+  using difference_type =
+    typename std::iterator_traits<iterator>::difference_type;
+  using size_type = size_t;
+
+
+  local_accessor() = default;
+
+  /* Available only when: dimensions == 0 */
+  template<int D = dimensions,
+           typename std::enable_if_t<D == 0>* = nullptr>
+  local_accessor(handler &commandGroupHandlerRef, const property_list& p = {})
+    : _addr{detail::handler::allocate_local_mem<dataT>(
+              commandGroupHandlerRef,1)}
+  {}
+
+  /* Available only when: dimensions > 0 */
+  template<int D = dimensions,
+           typename std::enable_if_t<(D > 0)>* = nullptr>
+  local_accessor(range<dimensions> allocationSize,
+           handler &commandGroupHandlerRef, const property_list& p = {})
+    : _addr{detail::handler::allocate_local_mem<dataT>(
+              commandGroupHandlerRef,
+              allocationSize.size())},
+      _num_elements{allocationSize}
+  {}
+
+  void swap(local_accessor &other)
+  {
+    using std::swap;
+    swap(_addr, other._addr);
+    swap(_num_elements, other._num_elements);
+  }
+
+  friend bool operator==(const local_accessor& lhs, const local_accessor& rhs)
+  {
+    return lhs._addr == rhs._addr && lhs._num_elements == rhs._num_elements;
+  }
+
+  friend bool operator!=(const local_accessor& lhs, const local_accessor& rhs)
+  {
+    return !(lhs == rhs);
+  }
+
+  std::size_t AdaptiveCpp_hash_code() const {
+    return _addr;
+  }
+
+  [[deprecated("Use AdaptiveCpp_hash_code()")]]
+  auto hipSYCL_hash_code() const {
+    return AdaptiveCpp_hash_code();
+  }
+
+  [[deprecated("get_size() was removed for SYCL 2020, use byte_size() instead")]]
+  ACPP_KERNEL_TARGET
+  size_t get_size() const
+  {
+    return get_count() * sizeof(dataT);
+  }
+
+  [[deprecated("get_count() was removed for SYCL 2020, use size() instead")]]
+  ACPP_KERNEL_TARGET
+  size_t get_count() const
+  {
+    return _num_elements.size();
+  }
+
+  ACPP_KERNEL_TARGET
+  size_t byte_size() const noexcept
+  {
+    return size() * sizeof(dataT);
+  }
+
+  ACPP_KERNEL_TARGET
+  size_t size() const noexcept
+  {
+    return _num_elements.size();
+  }
+
+  size_type max_size() const noexcept
+  {
+    return std::numeric_limits<difference_type>::max();
+  }
+
+  ACPP_KERNEL_TARGET
+  bool empty() const noexcept
+  {
+    return size() == 0;
+  }
+
+  range<dimensions> get_range() const
+  {
+    return _num_elements;
+  }
+
+  template<int D = dimensions, std::enable_if_t<D == 0, bool> = false>
+  ACPP_KERNEL_TARGET
+  operator reference() const
+  {
+    return *detail::local_memory::get_ptr<dataT>(_addr);
+  }
+
+  template<int D = dimensions, std::enable_if_t<!std::is_const_v<dataT> && D == 0, bool> = false>
+  const local_accessor& operator=(const value_type& other) const {
+    *get_multi_ptr() = other;
+  }
+
+  template<int D = dimensions, std::enable_if_t<!std::is_const_v<dataT> && D == 0, bool> = false>
+  const local_accessor& operator=(value_type&& other) const {
+    *get_multi_ptr() = other;
+  }
+
+  template<int D = dimensions, std::enable_if_t<(D > 0), bool> = false>
+  ACPP_KERNEL_TARGET
+  reference operator[](id<dimensions> index) const
+  {
+    return *(detail::local_memory::get_ptr<dataT>(_addr) +
+        detail::linear_id<dimensions>::get(index, _num_elements));
+  }
+
+  template<int D = dimensions, std::enable_if_t<D == 1, bool> = false>
+  ACPP_KERNEL_TARGET
+  reference operator[](size_t index) const
+  {
+    return *(detail::local_memory::get_ptr<dataT>(_addr) + index);
+  }
+
+  /* Available only when: dimensions > 1 */
+  template<int D = dimensions, std::enable_if_t<(D > 1), bool> = false>
+  ACPP_KERNEL_TARGET
+  detail::accessor::local_subscript_proxy<dataT, dimensions>
+  operator[](size_t index) const
+  {
+    sycl::id<dimensions> initial_index;
+    initial_index[0] = index;
+    
+    return detail::accessor::local_subscript_proxy<dataT, dimensions> {
+      this, initial_index
+    };
+  }
+
+  [[deprecated("use get_multi_ptr()")]]
+  ACPP_KERNEL_TARGET
+  local_ptr<dataT> get_pointer() const noexcept
+  {
+    return local_ptr<dataT>{
+      detail::local_memory::get_ptr<dataT>(_addr)
+    };
+  }
+
+  template <access::decorated IsDecorated>
+  ACPP_KERNEL_TARGET
+  accessor_ptr<IsDecorated> get_multi_ptr() const noexcept
+  {
+    return accessor_ptr<IsDecorated>{
+      detail::local_memory::get_ptr<dataT>(_addr)
+    };
+  }
+
+  template <typename T = dataT, std::enable_if<std::is_same_v<T, dataT> && !std::is_const_v<T>, bool> = false>
+  operator local_accessor<const T, dimensions>() const {
+    return local_accessor<const T, dimensions>{_addr, _num_elements};
+  }
+
+  iterator begin() const noexcept {
+    return iterator::make_begin(this);
+  }
+
+  iterator end() const noexcept {
+    return iterator::make_end(this);
+  }
+
+  const_iterator cbegin() const noexcept {
+    return const_iterator::make_begin(this);
+  }
+
+  const_iterator cend() const noexcept {
+    return const_iterator::make_end(this);
+  }
+
+  reverse_iterator rbegin() const noexcept {
+    return reverse_iterator(end());
+  }
+
+  reverse_iterator rend() const noexcept {
+    return reverse_iterator(begin());
+  }
+
+  const_reverse_iterator crbegin() const noexcept {
+    return const_reverse_iterator(cend());
+  }
+
+  const_reverse_iterator crend() const noexcept {
+    return const_reverse_iterator(cbegin());
+  }
+private:
+  ACPP_KERNEL_TARGET
+  local_accessor(address addr, range<dimensions> r)
+    : _addr{addr}, _num_elements{r}
+  {}
+
+  specialized<address> _addr;
+  specialized<range<dimensions>> _num_elements;
+};
+
 namespace detail::accessor {
 
 template<class AccessorType>
@@ -2178,13 +2453,21 @@ struct hash<hipsycl::sycl::accessor<dataT, dimensions, accessmode, accessTarget,
     return acc.AdaptiveCpp_hash_code();
   }
 };
-// accessor also covers the local_accessor specialization
 
 template<typename dataT, int dimensions, hipsycl::sycl::access_mode A>
 struct hash<hipsycl::sycl::host_accessor<dataT, dimensions, A>> {
 
   std::size_t operator()(
       const hipsycl::sycl::host_accessor<dataT, dimensions, A> &acc) const {
+    return acc.AdaptiveCpp_hash_code();
+  }
+};
+
+template<typename dataT, int dimensions>
+struct hash<hipsycl::sycl::local_accessor<dataT, dimensions>> {
+
+  std::size_t operator()(
+      const hipsycl::sycl::local_accessor<dataT, dimensions> &acc) const {
     return acc.AdaptiveCpp_hash_code();
   }
 };
