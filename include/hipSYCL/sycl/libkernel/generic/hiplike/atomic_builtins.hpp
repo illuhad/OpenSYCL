@@ -329,8 +329,9 @@ HIPSYCL_HIPLIKE_BUILTIN bool __acpp_atomic_compare_exchange_weak(
 // *********************** Integral values only *****************************
 
 // Defines overloads for integral atomics for types that are not natively
-// supported using bitcasts: long long, long and unsigned long
-#define HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(            \
+// supported using bitcasts (long long, long and unsigned long), for operations
+// that are agnostic to the sign of the operands (e.g. atomicAdd).
+#define HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_AGNOSTIC(   \
     name, bitcast_name)                                                        \
   template <access::address_space S, class InvokedT, class T>                  \
   HIPSYCL_HIPLIKE_BUILTIN T bitcast_name(T *addr, T x, memory_order order,     \
@@ -364,6 +365,37 @@ HIPSYCL_HIPLIKE_BUILTIN bool __acpp_atomic_compare_exchange_weak(
     }                                                                          \
   }
 
+// Defines overloads for integral atomics for types that are not natively
+// supported using bitcasts (long and unsigned long), for operations
+// where the sign of the operands matters (e.g. atomicMin).
+#define HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_SIGNED(     \
+    name, bitcast_name)                                                        \
+  template <access::address_space S, class InvokedT, class T>                  \
+  HIPSYCL_HIPLIKE_BUILTIN T bitcast_name(T *addr, T x, memory_order order,     \
+                                         memory_scope scope) noexcept {        \
+    return bit_cast<T>(name<S>(reinterpret_cast<InvokedT *>(addr),             \
+                               bit_cast<InvokedT>(x), order, scope));          \
+  }                                                                            \
+  template <access::address_space S>                                           \
+  HIPSYCL_HIPLIKE_BUILTIN long name(long *addr, long x, memory_order order,    \
+                                    memory_scope scope) noexcept {             \
+    if constexpr (sizeof(long) == 4) {                                         \
+      return bitcast_name<S, int>(addr, x, order, scope);                      \
+    } else {                                                                   \
+      return bitcast_name<S, long long>(addr, x, order, scope);       \
+    }                                                                          \
+  }                                                                            \
+  template <access::address_space S>                                           \
+  HIPSYCL_HIPLIKE_BUILTIN unsigned long name(                                  \
+      unsigned long *addr, unsigned long x, memory_order order,                \
+      memory_scope scope) noexcept {                                           \
+    if constexpr (sizeof(long) == 4) {                                         \
+      return bitcast_name<S, unsigned int>(addr, x, order, scope);             \
+    } else {                                                                   \
+      return bitcast_name<S, unsigned long long>(addr, x, order, scope);       \
+    }                                                                          \
+  }
+
 // ******************** atomic fetch and ************************
 
 template <access::address_space S, class T>
@@ -372,7 +404,7 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_and(
   return atomicAnd(addr, x);
 }
 
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_AGNOSTIC(
     __acpp_atomic_fetch_and, __acpp_bitcast_atomic_fetch_and);
 
 // ************************ atomic fetch or **********************
@@ -384,7 +416,7 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_or(T *addr, T x, memory_order orde
    return atomicOr(addr, x);
 }
 
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_AGNOSTIC(
     __acpp_atomic_fetch_or, __acpp_bitcast_atomic_fetch_or);
 
 // ************************ atomic fetch xor **********************
@@ -395,7 +427,7 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_xor(T *addr, T x, memory_order ord
    return atomicXor(addr, x);
 }
 
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_AGNOSTIC(
     __acpp_atomic_fetch_xor, __acpp_bitcast_atomic_fetch_xor);
 
 // ***************** Floating point and integral values *************
@@ -411,7 +443,7 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_add(
 
 // atomicAdd supports float and double, so we only need to complete the integral
 // overload set
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_AGNOSTIC(
     __acpp_atomic_fetch_add, __acpp_bitcast_atomic_fetch_add);
 
 // *********************** atomic sub ****************************
@@ -478,11 +510,18 @@ __acpp_atomic_fetch_sub(unsigned long *addr, unsigned long x,
 template <access::address_space S, class T>
 HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_min(
     T *addr, T x, memory_order order, memory_scope scope) noexcept {
+#if defined(__HIP__)
+  // HIP does not support some of the overloads of atomicMin until ROCm 5.7
+  // https://github.com/ROCm/clr/issues/2
+  return __hip_atomic_fetch_min(addr, x, builtin_memory_order(order),
+      __HIP_MEMORY_SCOPE_AGENT);
+#else
   return atomicMin(addr, x);
+#endif
 }
 
 // Need completion of integral overload set
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_SIGNED(
     __acpp_atomic_fetch_min, __acpp_bitcast_atomic_fetch_min);
 
 // Need CAS loop for emulation of floating point overloads
@@ -517,11 +556,18 @@ __acpp_atomic_fetch_min(double *addr, double x, memory_order order,
 template <access::address_space S, class T>
 HIPSYCL_HIPLIKE_BUILTIN T __acpp_atomic_fetch_max(
     T *addr, T x, memory_order order, memory_scope scope) noexcept {
+#if defined(__HIP__)
+  // HIP does not support some of the overloads of atomicMax until ROCm 5.7
+  // https://github.com/ROCm/clr/issues/2
+  return __hip_atomic_fetch_max(addr, x, builtin_memory_order(order),
+      __HIP_MEMORY_SCOPE_AGENT);
+#else
   return atomicMax(addr, x);
+#endif
 }
 
 // Need completion of integral overload set
-HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS(
+HIPSYCL_DEFINE_HIPLIKE_ATOMIC_INTEGRAL_NONNATIVE_OVERLOADS_SIGNED(
     __acpp_atomic_fetch_max, __acpp_bitcast_atomic_fetch_max);
 
 // Need CAS loop for emulation of floating point overloads

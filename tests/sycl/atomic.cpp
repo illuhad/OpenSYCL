@@ -78,10 +78,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(load_store_exchange, Type,
 }
 
 
-template <class T, class AtomicTester,
-          class Verifier>
-void atomic_device_reduction_test(AtomicTester t, Verifier v,
-				  std::function<int(int)> init = [](int t) { return t; }) {
+template <class T, class AtomicOp, class Verifier>
+void atomic_device_reduction_test(AtomicOp op, Verifier v,
+                                  std::string_view type_name, std::string_view op_name,
+                                  std::function<int(int)> init = [](int t) { return -t; }) {
   
   sycl::queue q;
 
@@ -100,9 +100,9 @@ void atomic_device_reduction_test(AtomicTester t, Verifier v,
         sycl::atomic_ref<T, sycl::memory_order::relaxed,
                         sycl::memory_scope::device> r{acc[0]};
         if constexpr(std::is_pointer_v<T>) {
-          t(r, reinterpret_cast<std::ptrdiff_t>(acc[idx]));
+          op(r, reinterpret_cast<std::ptrdiff_t>(acc[idx]));
         } else {
-          t(r, acc[idx]);
+          op(r, acc[idx]);
         }
       }
     });
@@ -117,7 +117,10 @@ void atomic_device_reduction_test(AtomicTester t, Verifier v,
         v(expected, int_to_t<T>(init(i)));
       }
     }
-    BOOST_CHECK(expected == hacc[0]);
+    BOOST_TEST_CONTEXT("Checking result for " << op_name << " on " << type_name << ": "
+        << expected << " (expected) == " << hacc[0] << " (received)") {
+      BOOST_CHECK(expected == hacc[0]);
+    }
   }
 }
 
@@ -180,20 +183,23 @@ BOOST_AUTO_TEST_CASE(fetch_op) {
     v = std::max(v,x);
   };
 
-#define HIPSYCL_ATOMIC_REF_INTEGER_TEST(Tester, Verifier)                      \
-  atomic_device_reduction_test<int>(Tester, Verifier);                         \
-  atomic_device_reduction_test<unsigned int>(Tester, Verifier);                \
-  atomic_device_reduction_test<long>(Tester, Verifier);                        \
-  atomic_device_reduction_test<unsigned long>(Tester, Verifier);               \
-  atomic_device_reduction_test<long long>(Tester, Verifier);                   \
-  atomic_device_reduction_test<unsigned long long>(Tester, Verifier);
+#define HIPSYCL_ATOMIC_REF_TEST_T(Type, Op, Verifier)                              \
+  atomic_device_reduction_test<Type>(Op, Verifier, #Type, #Op);
 
-#define HIPSYCL_ATOMIC_REF_FP_TEST(Tester, Verifier)                           \
-  atomic_device_reduction_test<float>(Tester, Verifier);                       \
-  atomic_device_reduction_test<double>(Tester, Verifier);
+#define HIPSYCL_ATOMIC_REF_INTEGER_TEST(Op, Verifier)                              \
+  HIPSYCL_ATOMIC_REF_TEST_T(int, Op, Verifier)                                     \
+  HIPSYCL_ATOMIC_REF_TEST_T(unsigned int, Op, Verifier)                            \
+  HIPSYCL_ATOMIC_REF_TEST_T(long, Op, Verifier)                                    \
+  HIPSYCL_ATOMIC_REF_TEST_T(unsigned long, Op, Verifier)                           \
+  HIPSYCL_ATOMIC_REF_TEST_T(long long, Op, Verifier)                               \
+  HIPSYCL_ATOMIC_REF_TEST_T(unsigned long long, Op, Verifier)
 
-#define HIPSYCL_ATOMIC_REF_PTR_TEST(Tester, Verifier, Initializer)       	\
-  atomic_device_reduction_test<int *>(Tester, Verifier, Initializer);
+#define HIPSYCL_ATOMIC_REF_FP_TEST(Op, Verifier)                                   \
+  HIPSYCL_ATOMIC_REF_TEST_T(float, Op, Verifier);                                  \
+  HIPSYCL_ATOMIC_REF_TEST_T(double, Op, Verifier);
+
+#define HIPSYCL_ATOMIC_REF_PTR_TEST(Op, Verifier, Initializer)                     \
+  atomic_device_reduction_test<int *>(Op, Verifier, "int*", #Op, Initializer);
 
 #ifndef ACPP_LIBKERNEL_CUDA_NVCXX
 
