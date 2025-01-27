@@ -45,7 +45,7 @@ template <__acpp_sscp_algorithm_op binary_op, typename OutType> OutType sg_reduc
   return sg_reduce_impl(x, op{}, lrange);
 }
 
-template <size_t shmem_array_length, typename OutType, typename MemoryType,
+template <__acpp_uint64 shmem_array_length, typename OutType, typename MemoryType,
           typename BinaryOperation>
 OutType wg_reduce(OutType x, BinaryOperation op, MemoryType *shrd_mem) {
 
@@ -78,7 +78,7 @@ OutType wg_reduce(OutType x, BinaryOperation op, MemoryType *shrd_mem) {
 
   // Now we are filled up shared memory with the results of all the subgroups
   // We reduce in shared memory until it fits into one sg
-  size_t elements_in_shmem =
+  __acpp_uint64 elements_in_shmem =
       num_subgroups < shmem_array_length ? num_subgroups : shmem_array_length;
   for (int i = shmem_array_length / 2; i >= first_sg_size; i /= 2) {
     if (wg_lid < i && wg_lid + i < elements_in_shmem) {

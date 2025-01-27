@@ -13,7 +13,6 @@
 
 #include "builtin_config.hpp"
 
-#include <stddef.h>
 
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_x();
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_y();

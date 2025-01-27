@@ -77,7 +77,7 @@ ACPP_SUBGROUP_INT_REDUCTION(u64, uint64)
   HIPSYCL_SSCP_CONVERGENT_BUILTIN                                                                  \
   __acpp_##type __acpp_sscp_work_group_reduce_##type(__acpp_sscp_algorithm_op op,                  \
                                                      __acpp_##type x) {                            \
-    constexpr size_t shmem_array_length = 32;                                                      \
+    constexpr int shmem_array_length = 32;                                                      \
     __acpp_##type *shrd_mem =                                                                      \
         static_cast<__acpp_##type *>(__acpp_sscp_host_get_internal_local_memory());                \
     switch (op) {                                                                                  \
@@ -106,7 +106,7 @@ ACPP_WORKGROUP_FLOAT_REDUCTION(f64)
   HIPSYCL_SSCP_CONVERGENT_BUILTIN                                                                  \
   __acpp_##type __acpp_sscp_work_group_reduce_##fn_suffix(__acpp_sscp_algorithm_op op,             \
                                                           __acpp_##type x) {                       \
-    constexpr size_t shmem_array_length = 32;                                                      \
+    constexpr int shmem_array_length = 32;                                                      \
     __acpp_##type *shrd_mem =                                                                      \
         static_cast<__acpp_##type *>(__acpp_sscp_host_get_internal_local_memory());                \
     switch (op) {                                                                                  \

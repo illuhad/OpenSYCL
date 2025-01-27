@@ -26,7 +26,7 @@ template <int SharedMemorySize, bool ExclusiveScan, typename OutType, typename M
 OutType wg_generic_scan(OutType x, BinaryOperation op, MemoryType shrd_mem, OutType init = 0) {
 
   // The last element of the shared memory is used to store the total sum for exclusive scans.
-  const size_t shmem_array_length = SharedMemorySize - 1;
+  const int shmem_array_length = SharedMemorySize - 1;
 
   const __acpp_uint32 wg_lid = __acpp_sscp_typed_get_local_linear_id<3, int>();
   const __acpp_uint32 wg_size = __acpp_sscp_typed_get_local_size<3, int>();
