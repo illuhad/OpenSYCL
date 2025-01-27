@@ -444,12 +444,13 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_clz(T x) noexcept {
 
   //we convert to the unsigned type to avoid the typecast creating 
   //additional ones in front of the value if x is negative
-  using Usigned = typename std::make_unsigned<T>::type; 
+  using Usigned = typename std::make_unsigned<T>::type;
 
-  constexpr T diff = CHAR_BIT*(sizeof(__acpp_int32) - sizeof(Usigned));
+  constexpr __acpp_int32 diff =
+      CHAR_BIT * (sizeof(__acpp_int32) - sizeof(Usigned));
   constexpr T size = CHAR_BIT*sizeof(T);
 
-  auto v = static_cast<__acpp_int32>(static_cast<Usigned>(x));
+  auto v = static_cast<__acpp_uint32>(static_cast<Usigned>(x));
   return v ? __clz(v)-diff : size;
   
 }
