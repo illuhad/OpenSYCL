@@ -8,7 +8,7 @@ jobs:
     runs-on: [self-hosted, gpu-nvidia]
     strategy:
       matrix:
-        clang_version: ['15']
+        clang_version: ['18']
         cuda: ['11.0']
         nvhpc_version: ['22.11']
     steps:
@@ -98,7 +98,7 @@ jobs:
     runs-on: [self-hosted, gpu-amd]
     strategy:
       matrix:
-        clang_version: ['15']
+        clang_version: ['18']
         cuda: ['11.0'] # Just to be able to build the backend for explicit multipass
     steps:
     - uses: actions/checkout@v4
@@ -154,7 +154,7 @@ jobs:
     runs-on: [self-hosted, gpu-intel]
     strategy:
       matrix:
-        clang_version: ['15']
+        clang_version: ['18']
     steps:
     - uses: actions/checkout@v4
     - name: clear JIT cache

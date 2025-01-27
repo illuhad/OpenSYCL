@@ -3,7 +3,7 @@ From: ubuntu:22.04
 
 %post
 export DEBIAN_FRONTEND=noninteractive
-export ROCM_VERSION="5.4.3"
+export ROCM_VERSION="6.2.4"
 
 export NVHPC_MAJOR_VERSION="22"
 export NVHPC_MINOR_VERSION="11"
@@ -11,16 +11,16 @@ export NVHPC_MINOR_VERSION="11"
 apt-get update
 apt-get install -y libboost-all-dev wget git libnuma-dev cmake curl unzip apt-transport-https ca-certificates software-properties-common sudo build-essential gettext libcurl4-openssl-dev openssh-client libnuma-dev jq libtbb-dev
 
-wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.16695.4/intel-igc-core_1.0.16695.4_amd64.deb
-wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.16695.4/intel-igc-opencl_1.0.16695.4_amd64.deb
-wget https://github.com/intel/compute-runtime/releases/download/24.17.29377.6/intel-level-zero-gpu-dbgsym_1.3.29377.6_amd64.ddeb
-wget https://github.com/intel/compute-runtime/releases/download/24.17.29377.6/intel-level-zero-gpu_1.3.29377.6_amd64.deb
-wget https://github.com/intel/compute-runtime/releases/download/24.17.29377.6/intel-opencl-icd-dbgsym_24.17.29377.6_amd64.ddeb
-wget https://github.com/intel/compute-runtime/releases/download/24.17.29377.6/intel-opencl-icd_24.17.29377.6_amd64.deb
-wget https://github.com/intel/compute-runtime/releases/download/24.17.29377.6/libigdgmm12_22.3.19_amd64.deb
-
 wget https://github.com/oneapi-src/level-zero/releases/download/v1.13.5/level-zero-devel_1.13.5+u22.04_amd64.deb
 wget https://github.com/oneapi-src/level-zero/releases/download/v1.13.5/level-zero_1.13.5+u22.04_amd64.deb
+
+wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.14828.8/intel-igc-core_1.0.14828.8_amd64.deb
+wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.14828.8/intel-igc-opencl_1.0.14828.8_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/23.30.26918.9/intel-level-zero-gpu-dbgsym_1.3.26918.9_amd64.ddeb
+wget https://github.com/intel/compute-runtime/releases/download/23.30.26918.9/intel-level-zero-gpu_1.3.26918.9_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/23.30.26918.9/intel-opencl-icd-dbgsym_23.30.26918.9_amd64.ddeb
+wget https://github.com/intel/compute-runtime/releases/download/23.30.26918.9/intel-opencl-icd_23.30.26918.9_amd64.deb
+wget https://github.com/intel/compute-runtime/releases/download/23.30.26918.9/libigdgmm12_22.3.0_amd64.deb
 
 sudo dpkg -i *.deb
 
@@ -34,12 +34,12 @@ wget https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64/nvhpc-20${NVHPC_
 apt-get install -y ./nvhpc-*
 
 wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
-echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/${ROCM_VERSION} focal main" | sudo tee /etc/apt/sources.list.d/rocm.list
+echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/${ROCM_VERSION} jammy main" | sudo tee /etc/apt/sources.list.d/rocm.list
 printf 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 600' | sudo tee /etc/apt/preferences.d/rocm-pin-600
 apt-get update
 apt-get install -y rocm-dev
 
 wget https://apt.llvm.org/llvm.sh
 chmod +x llvm.sh
-./llvm.sh 15
-apt-get install -y libclang-15-dev clang-tools-15 libomp-15-dev
+./llvm.sh 18
+apt-get install -y libclang-18-dev clang-tools-18 libomp-18-dev
