@@ -36,7 +36,7 @@ HIPSYCL_SSCP_BUILTIN __acpp_uint32 __acpp_sscp_get_subgroup_max_size() {
 }
 
 HIPSYCL_SSCP_BUILTIN __acpp_uint32 __acpp_sscp_get_subgroup_id() {
-  size_t local_tid =
+  __acpp_uint32 local_tid =
       __acpp_sscp_get_local_id_x() +
       __acpp_sscp_get_local_id_y() * __acpp_sscp_get_local_size_x() +
       __acpp_sscp_get_local_id_z() * __acpp_sscp_get_local_size_x() *

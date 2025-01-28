@@ -9,19 +9,19 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/sycl/libkernel/sscp/builtins/core.hpp"
-#include <stddef.h>
 
-extern "C" size_t __ockl_get_global_offset(unsigned);
-extern "C" size_t __ockl_get_global_id(unsigned);
-extern "C" size_t __ockl_get_local_id(unsigned);
-extern "C" size_t __ockl_get_group_id(unsigned);
-extern "C" size_t __ockl_get_global_size(unsigned);
-extern "C" size_t __ockl_get_local_size(unsigned);
-extern "C" size_t __ockl_get_num_groups(unsigned);
-extern "C" unsigned __ockl_get_work_dim(unsigned);
-extern "C" size_t __ockl_get_enqueued_local_size(unsigned);
-extern "C" size_t __ockl_get_global_linear_id(unsigned);
-extern "C" size_t __ockl_get_local_linear_id(unsigned);
+
+extern "C" __acpp_uint64 __ockl_get_global_offset(unsigned);
+extern "C" __acpp_uint64 __ockl_get_global_id(unsigned);
+extern "C" __acpp_uint64 __ockl_get_local_id(unsigned);
+extern "C" __acpp_uint64 __ockl_get_group_id(unsigned);
+extern "C" __acpp_uint64 __ockl_get_global_size(unsigned);
+extern "C" __acpp_uint64 __ockl_get_local_size(unsigned);
+extern "C" __acpp_uint64 __ockl_get_num_groups(unsigned);
+extern "C" __acpp_uint32 __ockl_get_work_dim(unsigned);
+extern "C" __acpp_uint64 __ockl_get_enqueued_local_size(unsigned);
+extern "C" __acpp_uint64 __ockl_get_global_linear_id(unsigned);
+extern "C" __acpp_uint64 __ockl_get_local_linear_id(unsigned);
 
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_x() {
   return __ockl_get_local_id(0);

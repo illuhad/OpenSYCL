@@ -9,13 +9,12 @@
  */
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/sycl/libkernel/sscp/builtins/core.hpp"
-#include <stddef.h>
 
 
-size_t __spirv_BuiltInLocalInvocationId(int);
-size_t __spirv_BuiltInWorkgroupId(int);
-size_t __spirv_BuiltInWorkgroupSize(int);
-size_t __spirv_BuiltInNumWorkgroups(int);
+__acpp_uint64 __spirv_BuiltInLocalInvocationId(int);
+__acpp_uint64 __spirv_BuiltInWorkgroupId(int);
+__acpp_uint64 __spirv_BuiltInWorkgroupSize(int);
+__acpp_uint64 __spirv_BuiltInNumWorkgroups(int);
 
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_x() {
   return __spirv_BuiltInLocalInvocationId(0);

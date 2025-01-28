@@ -14,7 +14,6 @@
 #include "builtin_config.hpp"
 #include "core_typed.hpp"
 
-#include <stddef.h>
 
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_x();
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_local_id_y();
@@ -32,65 +31,5 @@ HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_num_groups_x();
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_num_groups_y();
 HIPSYCL_SSCP_BUILTIN __acpp_uint64 __acpp_sscp_get_num_groups_z();
 
-// This is used to implement the optimization in llvm-to-backend to treat
-// all queries as fitting into int.
-// The implementation is provided by the compiler and does not need to be implemented
-// by backends.
-HIPSYCL_SSCP_BUILTIN bool
-__acpp_sscp_if_global_sizes_fit_in_int();
-
-template<int Dim>
-size_t __acpp_sscp_get_global_linear_id() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_global_linear_id<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_global_linear_id<Dim, size_t>();
-  }
-}
-
-template<int Dim>
-size_t __acpp_sscp_get_group_linear_id() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_group_linear_id<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_group_linear_id<Dim, size_t>();
-  }
-}
-
-template<int Dim>
-size_t __acpp_sscp_get_local_linear_id() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_local_linear_id<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_local_linear_id<Dim, size_t>();
-  }
-}
-
-template<int Dim>
-size_t __acpp_sscp_get_global_size() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_global_size<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_global_size<Dim, size_t>();
-  }
-}
-
-template<int Dim>
-size_t __acpp_sscp_get_local_size() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_local_size<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_local_size<Dim, size_t>();
-  }
-}
-
-template<int Dim>
-size_t __acpp_sscp_get_num_groups() {
-  if(__acpp_sscp_if_global_sizes_fit_in_int()) {
-    return __acpp_sscp_typed_get_num_groups<Dim, int>();
-  } else {
-    return __acpp_sscp_typed_get_num_groups<Dim, size_t>();
-  }
-}
 
 #endif

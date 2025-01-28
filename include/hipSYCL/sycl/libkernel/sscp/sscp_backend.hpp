@@ -56,6 +56,7 @@
 
  #include "hipSYCL/glue/llvm-sscp/ir_constants.hpp"
  #include "builtins/core.hpp"
+ #include "builtins/linear_id.hpp"
  
 #else
  #define ACPP_LIBKERNEL_COMPILER_SUPPORTS_SSCP 0
