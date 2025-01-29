@@ -140,8 +140,8 @@ HIPSYCL_SSCP_BUILTIN double __acpp_sscp_lgamma_r_f64(double x, __acpp_int64* y) 
 }
 
 HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log, __nv_logf, __nv_log)
-HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log2, __nv_log2f, __nv_log)
-HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log10, __nv_log10f, __nv_log)
+HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log2, __nv_log2f, __nv_log2)
+HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log10, __nv_log10f, __nv_log10)
 HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(log1p, __nv_log1pf, __nv_log1p)
 HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN(logb, __nv_logbf, __nv_logb)
 HIPSYCL_SSCP_MAP_PTX_FLOAT_BUILTIN3(mad, __nv_fmaf, __nv_fma)
