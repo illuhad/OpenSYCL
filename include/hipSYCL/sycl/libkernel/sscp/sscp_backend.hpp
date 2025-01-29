@@ -54,8 +54,8 @@
   #define ACPP_HOST_TARGET
  #endif
 
- #include "hipSYCL/glue/llvm-sscp/ir_constants.hpp"
- #include "builtins/core.hpp"
+#include "builtins/core_linear_id.hpp"
+#include "hipSYCL/glue/llvm-sscp/ir_constants.hpp"
  
 #else
  #define ACPP_LIBKERNEL_COMPILER_SUPPORTS_SSCP 0

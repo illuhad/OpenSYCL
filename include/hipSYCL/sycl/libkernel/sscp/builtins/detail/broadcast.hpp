@@ -15,7 +15,7 @@
 #include "../barrier.hpp"
 #include "../broadcast.hpp"
 #include "../builtin_config.hpp"
-#include "../core_typed.hpp"
+#include "../core_typed_linear_id.hpp"
 #include "../shuffle.hpp"
 #include "utils.hpp"
 
