@@ -6,3 +6,10 @@ config.acpp_compiler = r'@ACPP_COMPILER@'
 
 lit_config.load_config(
         config, os.path.join(config.my_src_root, "compiler/lit.cfg.py"))
+
+if "@ACPP_HAS_ACCELERATED_CPU@" == "true":
+  config.available_features.add('cbs')
+if "@ACPP_HAS_SCPP@" == "true":
+  config.available_features.add('sscp')
+if "@ACPP_HAS_STDPAR@" == "true":
+  config.available_features.add('stdpar')

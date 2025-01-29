@@ -1,3 +1,4 @@
+// REQUIRES: cbs
 // RUN: %acpp %s -o %t --acpp-targets=omp --acpp-use-accelerated-cpu
 // RUN: %t | FileCheck %s
 // RUN: %acpp %s -o %t --acpp-targets=omp --acpp-use-accelerated-cpu -O

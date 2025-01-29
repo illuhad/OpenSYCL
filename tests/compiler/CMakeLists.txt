@@ -8,5 +8,5 @@ add_custom_target(check-reflection
 add_custom_target(check-stdpar
         COMMAND lit "${CMAKE_CURRENT_BINARY_DIR}/stdpar" -v)
 
-add_custom_target(check)
-add_dependencies(check check-cbs check-sscp check-reflection check-stdpar)
+add_custom_target(check
+        COMMAND lit "${CMAKE_CURRENT_BINARY_DIR}" -v)
