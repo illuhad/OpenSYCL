@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+export DH_VERBOSE = 1
+export DH_OPTIONS=-v
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND  = -Wall -pedantic -fPIC
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+export DEB_BUILD_OPTIONS = nocheck, nostrip
+
+%:
+	        dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure  -- \
+	          -Scmake \
+	          -DCMAKE_CXX_COMPILER=/usr/bin/clang++-16 \
+	          -DCLANG_EXECUTABLE_PATH=/usr/bin/clang++-16 \
+	          -DWITH_ACCELERATED_CPU=ON \
+	          -DWITH_CUDA_BACKEND=OFF \
+	          -DWITH_ROCM_BACKEND=OFF \
+	          -DWITH_LEVEL_ZERO_BACKEND=OFF \
+	          -DWITH_OPENCL_BACKEND=OFF \
+	          -DWITH_SSCP_COMPILER=ON \
+	          -DLLVM_DIR=/usr/lib/llvm-16/cmake/ \
+	          -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+	          -DROCM_PATH=/opt/rocm \
+	          -DCMAKE_INSTALL_PREFIX=/opt/AdaptiveCpp
+override_dh_auto_build:
+	dh_auto_build -- -j2
+override_dh_shlibdeps:
+	dh_shlibdeps -l/opt/AdaptiveCpp/lib
