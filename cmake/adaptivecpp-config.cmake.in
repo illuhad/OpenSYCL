@@ -90,6 +90,15 @@ set(ACPP_COMPILER_LAUNCH_RULE_FILE "${CMAKE_BINARY_DIR}/CMakeFiles/adaptivecpp-s
 configure_file("${ACPP_COMPILER_LAUNCH_RULE_IN_FILE}" "${ACPP_COMPILER_LAUNCH_RULE_FILE}" @ONLY)
 set(ACPP_EXTRA_OBJECT_DEPENDS "${ACPP_COMPILER_LAUNCHER};${ACPP_COMPILER_LAUNCH_RULE_FILE}")
 
+# See https://gitlab.kitware.com/cmake/cmake/-/merge_requests/4317
+# CMake prevents implicit include directories from being explicitly included by user.
+# Implicit include directories are automatically detected from try_compile().
+# This removes the directories from that list, restoring the ability to include them explicitly.
+list(REMOVE_ITEM CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES
+     "@CMAKE_INSTALL_PREFIX@/include")
+list(REMOVE_ITEM CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES
+     "@CMAKE_INSTALL_PREFIX@/include/AdaptiveCpp")
+
 # Do not call target_sources after add_sycl_to_target or dependency tracking on compiler flags will break in subtle ways
 function(add_sycl_to_target)
   set(options)
