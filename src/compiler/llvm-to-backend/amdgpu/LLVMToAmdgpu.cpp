@@ -92,7 +92,10 @@ bool getCommandOutput(const std::string &Program, const llvm::SmallVector<std::s
     return false;
   }
 
-  AtScopeExit DestroyOutputFile([&]() { auto Err = OutputFile->discard(); });
+  AtScopeExit DestroyOutputFile([&]() {
+    if (auto Err = OutputFile->discard())
+      ;
+  });
 
   llvm::SmallVector<llvm::StringRef> InvocationRef;
   for(const auto& S: Invocation)
@@ -423,8 +426,6 @@ bool LLVMToAmdgpuTranslator::clangJitLink(llvm::Module& FlavoredModule, std::str
   auto OutputFile = llvm::sys::fs::TempFile::create("acpp-sscp-amdgpu-%%%%%%.hipfb");
   auto DummyFile = llvm::sys::fs::TempFile::create("acpp-sscp-amdgpu-dummy-%%%%%%.cpp");
 
-  std::string OutputFilename = OutputFile->TmpName;
-
   auto checkFileError = [&](auto& F) {
     auto E = F.takeError();
     if(E){
@@ -435,12 +436,24 @@ bool LLVMToAmdgpuTranslator::clangJitLink(llvm::Module& FlavoredModule, std::str
   };
 
   if(!checkFileError(InputFile)) return false;
+  if(!checkFileError(OutputFile)) return false;
   if(!checkFileError(DummyFile)) return false;
 
-  AtScopeExit DestroyInputFile([&]() { auto Err = InputFile->discard(); });
-  AtScopeExit DestroyOutputFile([&]() { auto Err = OutputFile->discard(); });
-  AtScopeExit DestroyDummyFile([&]() { auto Err = DummyFile->discard(); });
-  
+  std::string OutputFilename = OutputFile->TmpName;
+
+  AtScopeExit DestroyInputFile([&]() {
+    if (auto Err = InputFile->discard())
+      ;
+  });
+  AtScopeExit DestroyOutputFile([&]() {
+    if (auto Err = OutputFile->discard())
+      ;
+  });
+  AtScopeExit DestroyDummyFile([&]() {
+    if (auto Err = DummyFile->discard())
+      ;
+  });
+
   llvm::raw_fd_ostream InputStream{InputFile->FD, false};
   llvm::raw_fd_ostream DummyStream{DummyFile->FD, false};
 
