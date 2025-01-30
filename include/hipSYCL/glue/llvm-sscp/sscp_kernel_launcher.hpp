@@ -95,6 +95,11 @@ private:
 static static_hcf_registration
     __acpp_register_sscp_hcf_object{get_local_hcf_object()};
 
+// These functions are defined in the AdaptiveCpp runtime (kernel_cache.cpp)
+extern "C" void __acpp_register_hcf(const char* hcf, std::size_t size);
+extern "C" void __acpp_unregister_hcf(std::size_t hcf_object_id);
+
+
 
 // This class effectively caches queries into the HCF cache: For each
 // kernel lambda type, a separate object is instantiated which queries the HCF cache.
