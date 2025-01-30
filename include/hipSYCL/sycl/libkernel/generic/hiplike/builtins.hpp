@@ -435,6 +435,12 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_ctz(T x) noexcept {
 
 }
 
+template<class T>
+__attribute__((noinline))
+T __noinline_clz(T a) noexcept {
+    return __builtin_clz(a);
+}
+
 
 template <class T,
           std::enable_if_t<
@@ -450,7 +456,11 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_clz(T x) noexcept {
   constexpr T size = CHAR_BIT*sizeof(T);
 
   auto v = static_cast<__acpp_int32>(static_cast<Usigned>(x));
-  return v ? __clz(v)-diff : size;
+
+  // here we force noinline on clz to avoid the if(v) to be optimized away as
+  // llvm rightfully assume that clz(0) == bitsize
+  // see : https://llvm.org/docs/LangRef.html#llvm-ctlz-intrinsic
+  return v ? __noinline_clz(v)-diff : size;
   
 }
 
