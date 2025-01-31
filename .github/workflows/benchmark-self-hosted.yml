@@ -1,15 +1,15 @@
 name: Benchmark on self-hosted runners
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened,edited,synchronize,labeled]
 
 env:
-  SYCL_BENCH_BENCHMARKS: scalar_prod 2DConvolution
+  SYCL_BENCH_BENCHMARKS: 2DConvolution 2mm 3DConvolution 3mm DRAM arith atax atomic_reduction bicg correlation covariance fdtd2d gemm gesummv gramschmidt host_device_bandwidth kmeans lin_reg_coeff lin_reg_error local_mem matmulchain median mol_dyn mvt nbody pattern_L2 reduction scalar_prod segmentedreduction sf syr2k syrk usm_accessors_latency usm_allocation_latency usm_instr_mix usm_pinned_overhead vec_add
 
 jobs:
-  run-benchmark:
-    if: contains(github.event.pull_request.labels.*.name, 'benchmark')
+  run-sycl-bench:
+    if: contains(github.event.pull_request.labels.*.name, 'benchmark') || contains(github.event.pull_request.labels.*.name, 'benchmark-sycl-bench')
     runs-on: [self-hosted, gpu-nvidia]
     permissions: write-all
     strategy:
@@ -29,7 +29,7 @@ jobs:
         git clone https://github.com/bcosenza/sycl-bench.git
         cd sycl-bench
         mkdir build && cd build
-        cmake .. -DSYCL_IMPL=AdaptiveCpp -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp/ -DACPP_TARGETS=cuda:sm_61
+        cmake .. -DSYCL_IMPL=AdaptiveCpp -DAdaptiveCpp_DIR=${GITHUB_WORKSPACE}/build/install/lib/cmake/AdaptiveCpp/ -DACPP_TARGETS=generic
         make $SYCL_BENCH_BENCHMARKS
         
     - name: Run SYCL-Bench
@@ -38,9 +38,9 @@ jobs:
         mkdir benchmarks
         for benchmark in $SYCL_BENCH_BENCHMARKS; do cp ../build/$benchmark ./benchmarks/$benchmark; done
         ./run-suite gpu-warmup
-        python3 ${GITHUB_WORKSPACE}/devops/sycl-bench_to_json.py sycl-bench.csv
-        cat output.json
-        mv output.json ${GITHUB_WORKSPACE}
+        python3 ${GITHUB_WORKSPACE}/devops/sycl-bench_to_json.py sycl-bench.csv sycl-bench.json
+        cat sycl-bench.json
+        mv sycl-bench.json ${GITHUB_WORKSPACE}
 
     - name: Download previous benchmark data
       uses: actions/cache@v4
@@ -53,8 +53,8 @@ jobs:
       with:
         name: SYCL-Bench benchmark
         tool: customSmallerIsBetter
-        output-file-path: output.json
-        external-data-json-path: ./cache/benchmark-data.json
+        output-file-path: sycl-bench.json
+        external-data-json-path: ./cache/sycl-bench-cache.json
         github-token: ${{ secrets.GITHUB_TOKEN }}
         comment-on-alert: true
         summary-always: true

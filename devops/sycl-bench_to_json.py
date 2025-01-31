@@ -3,8 +3,8 @@ import sys
 import os
 import json
 
-if len(sys.argv) < 2:
-    print(f"usage: {os.path.basename(__file__)} SYCL_BENCH_OUTPUT.CSV")
+if len(sys.argv) < 3:
+    print(f"usage: {os.path.basename(__file__)} sycl-bench.csv new_output.json")
     exit(1)
 
 with open(sys.argv[1], newline='') as csvfile:
@@ -37,5 +37,5 @@ with open(sys.argv[1], newline='') as csvfile:
     
         benchmarks.append(benchmark)
     
-    with open("output.json", "w") as outfile:
+    with open(sys.argv[2], "w") as outfile:
         json.dump(benchmarks, outfile, indent=2)
