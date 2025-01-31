@@ -44,6 +44,14 @@ jobs:
         uses: actions/upload-pages-artifact@v3
 
   deploy_page:
+    if: github.ref == 'refs/heads/develop'
+
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
     environment:
       name: github-pages
       url: ${{steps.deployment.outputs.page_url}}
