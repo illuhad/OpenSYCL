@@ -215,33 +215,19 @@ endif()
 
 if(WITH_OPENCL_BACKEND)
   include(FetchContent)
-  FetchContent_Declare(ocl-headers
-    GIT_REPOSITORY https://github.com/KhronosGroup/OpenCL-Headers
-    GIT_TAG c860bb551eeef9a47d56286a70cea903db3d6ed2
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
+  FetchContent_Declare(OpenCLHeaders
+    GIT_REPOSITORY "https://github.com/KhronosGroup/OpenCL-Headers"
+    GIT_TAG "c860bb551eeef9a47d56286a70cea903db3d6ed2"
+    FIND_PACKAGE_ARGS
   )
-  FetchContent_GetProperties(ocl-headers)
-  if(NOT ocl-headers_POPULATED)
-    FetchContent_Populate(ocl-headers)
-    add_subdirectory(${ocl-headers_SOURCE_DIR} ${ocl-headers_BINARY_DIR} EXCLUDE_FROM_ALL)
-  endif()
-  add_library(ocl-headers INTERFACE)
-  target_include_directories(ocl-headers INTERFACE ${ocl-headers_SOURCE_DIR})
-  
-  FetchContent_Declare(ocl-cxx-headers
-    GIT_REPOSITORY https://github.com/KhronosGroup/OpenCL-CLHPP
-    GIT_TAG 0bdbbfe5ecda42cff50c96cc5e33527f42fcbd45
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
+
+  FetchContent_Declare(OpenCLHeadersCpp
+    GIT_REPOSITORY "https://github.com/KhronosGroup/OpenCL-CLHPP"
+    GIT_TAG "0bdbbfe5ecda42cff50c96cc5e33527f42fcbd45"
+    FIND_PACKAGE_ARGS
   )
-  FetchContent_GetProperties(ocl-cxx-headers)
-  if(NOT ocl-cxx-headers_POPULATED)
-    FetchContent_Populate(ocl-cxx-headers)
-    add_subdirectory(${ocl-cxx-headers_SOURCE_DIR} ${ocl-cxx-headers_BINARY_DIR} EXCLUDE_FROM_ALL)
-  endif()
-  add_library(ocl-cxx-headers INTERFACE)
-  target_include_directories(ocl-cxx-headers INTERFACE ${ocl-cxx-headers_SOURCE_DIR}/include)
+
+  FetchContent_MakeAvailable(OpenCLHeaders OpenCLHeadersCpp)
 
   add_library(rt-backend-ocl SHARED
     ocl/ocl_backend.cpp
@@ -253,7 +239,7 @@ if(WITH_OPENCL_BACKEND)
     ocl/ocl_queue.cpp)
 
   target_include_directories(rt-backend-ocl PRIVATE ${HIPSYCL_SOURCE_DIR}/include)
-  target_link_libraries(rt-backend-ocl PRIVATE acpp-rt ${OpenCL_LIBRARIES} ocl-headers ocl-cxx-headers)
+  target_link_libraries(rt-backend-ocl PRIVATE acpp-rt OpenCL::OpenCL OpenCL::HeadersCpp)
 
   target_compile_options(rt-backend-ocl PRIVATE ${HIPSYCL_RT_EXTRA_CXX_FLAGS})
   target_link_libraries(rt-backend-ocl PRIVATE ${HIPSYCL_RT_EXTRA_LINKER_FLAGS})
