@@ -34,10 +34,12 @@ static std::size_t get_local_hcf_id() {
 
 struct static_hcf_registration {
 public:
+  __attribute__((internal_linkage))
   static_hcf_registration() {
     __acpp_register_hcf(get_local_hcf_object(), get_local_hcf_size());
   }
 
+  __attribute__((internal_linkage))
   ~static_hcf_registration() {
     __acpp_unregister_hcf(get_local_hcf_id());
   }
