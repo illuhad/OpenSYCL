@@ -12,14 +12,15 @@
 #include "hipSYCL/runtime/allocator.hpp"
 #include "hipSYCL/runtime/allocation_tracker.hpp"
 #include "hipSYCL/runtime/application.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 #include "hipSYCL/runtime/runtime_event_handlers.hpp"
 
 namespace hipsycl {
 namespace rt {
 
 void *allocate_device(backend_allocator *alloc, size_t min_alignment,
-                      size_t size_bytes) {
-  auto *ptr = alloc->raw_allocate(min_alignment, size_bytes);
+                      size_t size_bytes, const allocation_hints &hints) {
+  auto *ptr = alloc->raw_allocate(min_alignment, size_bytes, hints);
   if(ptr) {
     application::event_handler_layer().on_new_allocation(
         ptr, size_bytes,
@@ -30,8 +31,8 @@ void *allocate_device(backend_allocator *alloc, size_t min_alignment,
 }
 
 void *allocate_host(backend_allocator *alloc, size_t min_alignment,
-                              size_t bytes) {
-  auto* ptr = alloc->raw_allocate_optimized_host(min_alignment, bytes);
+                    size_t bytes, const allocation_hints &hints) {
+  auto* ptr = alloc->raw_allocate_optimized_host(min_alignment, bytes, hints);
   if(ptr) {
     application::event_handler_layer().on_new_allocation(
         ptr, bytes,
@@ -41,8 +42,9 @@ void *allocate_host(backend_allocator *alloc, size_t min_alignment,
   return ptr;
 }
 
-void *allocate_shared(backend_allocator *alloc, size_t bytes) {
-  auto* ptr = alloc->raw_allocate_usm(bytes);
+void *allocate_shared(backend_allocator *alloc, size_t bytes,
+                      const allocation_hints &hints) {
+  auto* ptr = alloc->raw_allocate_usm(bytes, hints);
   if(ptr) {
     application::event_handler_layer().on_new_allocation(
         ptr, bytes,

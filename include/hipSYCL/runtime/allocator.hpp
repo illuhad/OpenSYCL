@@ -13,6 +13,7 @@
 
 #include "device_id.hpp"
 #include "error.hpp"
+#include "hints.hpp"
 
 namespace hipsycl {
 namespace rt {
@@ -36,18 +37,22 @@ public:
 
   /// Raw allocation mechanism that does not interact with the runtime's
   /// event handler mechanism. Should not be called directly in most cases.
-  virtual void *raw_allocate(size_t min_alignment, size_t size_bytes) = 0;
+  virtual void *raw_allocate(size_t min_alignment, size_t size_bytes,
+                             const allocation_hints &hints = {}) = 0;
   /// Optimized host memory - may be page-locked, device mapped if supported
   /// Raw mechanism that does not interact with the runtime's
   /// event handler mechanism. Should not be called directly in most cases.
-  virtual void* raw_allocate_optimized_host(size_t min_alignment, size_t bytes) = 0;
+  virtual void*
+  raw_allocate_optimized_host(size_t min_alignment, size_t bytes,
+                              const allocation_hints &hints = {}) = 0;
   /// Raw free mechanism that does not interact with the runtime's
   /// event handler mechanism. Should not be called directly in most cases.
   virtual void raw_free(void *mem) = 0;
   /// Allocate memory accessible both from the host and the backend.
   /// Raw mechanism that does not interact with the runtime's
   /// event handler mechanism. Should not be called directly in most cases.
-  virtual void *raw_allocate_usm(size_t bytes) = 0;
+  virtual void *raw_allocate_usm(size_t bytes,
+                                 const allocation_hints &hints = {}) = 0;
   
   virtual device_id get_device() const = 0;
 
@@ -64,10 +69,11 @@ public:
 };
 
 void *allocate_device(backend_allocator *alloc, size_t min_alignment,
-                      size_t size_bytes);
+                      size_t size_bytes, const allocation_hints &hints = {});
 void *allocate_host(backend_allocator *alloc, size_t min_alignment,
-                              size_t bytes);
-void *allocate_shared(backend_allocator* alloc, size_t bytes);
+                    size_t bytes, const allocation_hints &hints = {});
+void *allocate_shared(backend_allocator* alloc, size_t bytes,
+                      const allocation_hints &hints = {});
 void deallocate(backend_allocator* alloc, void *mem);
 
 

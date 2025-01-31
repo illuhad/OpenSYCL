@@ -14,6 +14,7 @@
 #include <CL/opencl.hpp>
 
 #include "../allocator.hpp"
+#include "../hints.hpp"
 #include "ocl_usm.hpp"
 
 namespace hipsycl {
@@ -25,14 +26,17 @@ public:
   ocl_allocator() = default;
   ocl_allocator(rt::device_id dev, ocl_usm* usm_provier);
 
-  virtual void* raw_allocate(size_t min_alignment, size_t size_bytes) override;
+  virtual void* raw_allocate(size_t min_alignment, size_t size_bytes,
+                             const allocation_hints &hints = {}) override;
 
-  virtual void *raw_allocate_optimized_host(size_t min_alignment,
-                                        size_t bytes) override;
+  virtual void *
+  raw_allocate_optimized_host(size_t min_alignment, size_t bytes,
+                              const allocation_hints &hints = {}) override;
   
   virtual void raw_free(void *mem) override;
 
-  virtual void *raw_allocate_usm(size_t bytes) override;
+  virtual void *raw_allocate_usm(size_t bytes,
+                                 const allocation_hints &hints = {}) override;
   virtual bool is_usm_accessible_from(backend_descriptor b) const override;
 
   virtual result query_pointer(const void* ptr, pointer_info& out) const override;

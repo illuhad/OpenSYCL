@@ -347,7 +347,7 @@ class acpp_config:
 """  If set, only shows compilation commands that would be executed,
   but does not actually execute it. """),
       'is-dryrun-only-std-flags': option("--acpp-dryrun-only-std-flags", "ACPP_DRYRUN_ONLYSTDFLAGS", "default-is-dryrun-only-std-flags",
-"""  If set, only shows compilation commands that would be executed, 
+"""  If set, only shows compilation commands that would be executed,
   but does not actually execute it. This version also remove all non standard flags."""),
       'is-explicit-multipass': option("--acpp-explicit-multipass", "ACPP_EXPLICIT_MULTIPASS",
       "default-is-explicit-multipass",
@@ -808,7 +808,7 @@ class acpp_config:
       return self._is_flag_set("is-dryrun-only-std-flags")
     except OptionNotSet:
       return False
-      
+
   @property
   def use_accelerated_cpu(self):
     try:
@@ -947,12 +947,12 @@ def filter_cmd_args(command, verbose = False):
   ]
 
   add_next_arg = True # to add clang call
-  for arg in command: 
+  for arg in command:
     if add_next_arg:
       new_cmd.append(arg)
       add_next_arg = False
       continue
-    
+
     for w in whitelist_enable_next:
       if arg.startswith(w):
         new_cmd.append(arg)
@@ -1974,7 +1974,7 @@ def print_config(config):
 
 def print_version(config):
   version = config.version
-  print("acpp [AdaptiveCpp compilation driver], Copyright (C) 2018-2024 Aksel Alpay and the AdaptiveCpp project")
+  print("acpp [AdaptiveCpp compilation driver], Copyright (C) 2018-2025 Aksel Alpay and the AdaptiveCpp project")
   print("  AdaptiveCpp version: {}.{}.{}{}".format(version[0],version[1],version[2],version[3]))
   print("  Installation root:",os.path.abspath(config.acpp_installation_path))
   if config.has_plugin:
