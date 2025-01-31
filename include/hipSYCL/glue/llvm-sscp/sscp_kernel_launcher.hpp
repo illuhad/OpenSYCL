@@ -29,6 +29,7 @@
 #include "hipSYCL/sycl/libkernel/sp_group.hpp"
 #include "hipSYCL/sycl/libkernel/group.hpp"
 #include "ir_constants.hpp"
+#include "hcf_registration.hpp"
 #include "../kernel_launcher_data.hpp"
 
 #include <array>
@@ -70,35 +71,6 @@ namespace hipsycl {
 namespace glue {
 
 namespace sscp {
-
-static std::string get_local_hcf_object() {
-  return std::string{
-      reinterpret_cast<const char *>(__acpp_local_sscp_hcf_content),
-      __acpp_local_sscp_hcf_object_size};
-}
-
-// TODO: Maybe this can be unified with the ACPP_STATIC_HCF_REGISTRATION
-// macro. We cannot use this macro directly because it expects
-// the object id to be constexpr, which it is not for the SSCP case.
-struct static_hcf_registration {
-  static_hcf_registration(const std::string& hcf_data) {
-    this->_hcf_object = rt::hcf_cache::get().register_hcf_object(
-        common::hcf_container{hcf_data});
-  }
-
-  ~static_hcf_registration() {
-    rt::hcf_cache::get().unregister_hcf_object(_hcf_object);
-  }
-private:
-  rt::hcf_object_id _hcf_object;
-};
-static static_hcf_registration
-    __acpp_register_sscp_hcf_object{get_local_hcf_object()};
-
-// These functions are defined in the AdaptiveCpp runtime (kernel_cache.cpp)
-extern "C" void __acpp_register_hcf(const char* hcf, std::size_t size);
-extern "C" void __acpp_unregister_hcf(std::size_t hcf_object_id);
-
 
 
 // This class effectively caches queries into the HCF cache: For each
