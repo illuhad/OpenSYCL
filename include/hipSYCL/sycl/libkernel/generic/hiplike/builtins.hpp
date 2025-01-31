@@ -436,7 +436,7 @@ HIPSYCL_HIPLIKE_BUILTIN T __acpp_ctz(T x) noexcept {
 }
 
 template<class T>
-__attribute__((noinline))
+HIPSYCL_HIPLIKE_BUILTIN __attribute__((noinline))
 T __noinline_clz(T a) noexcept {
     return __builtin_clz(a);
 }
