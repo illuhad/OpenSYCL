@@ -793,3 +793,5 @@ mark_as_advanced(
   ADAPTIVECPP_INSTALL_CMAKE_DIR
 )
 
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(Packaging)
