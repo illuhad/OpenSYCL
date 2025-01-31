@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(builtin_int_basic, T, math_test_genints::type) {
       // and with SMCP on non-AMD devices, including explicit multipass builds
       // were both CUDA and HIP are targeted in a single build.
 #ifdef __ACPP_ENABLE_HIP_TARGET__
-      bool enable_clz = queue.get_device().get_backend() != s::backend::hip;
+      bool enable_clz = true;//queue.get_device().get_backend() != s::backend::hip;
 #else
       bool enable_clz = true;
 #endif
