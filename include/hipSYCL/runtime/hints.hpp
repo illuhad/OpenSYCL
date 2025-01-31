@@ -219,6 +219,11 @@ HIPSYCL_RT_HINTS_MAP_GETTER(request_instrumentation_finish_timestamp,
                             _request_instrumentation_finish_timestamp);
 HIPSYCL_RT_HINTS_MAP_GETTER(instant_execution,
                             _instant_execution);
+
+struct allocation_hints {
+
+};
+
 }
 }
 

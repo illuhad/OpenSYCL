@@ -27,18 +27,24 @@
 #include "hipSYCL/runtime/application.hpp"
 #include "hipSYCL/runtime/backend.hpp"
 #include "hipSYCL/runtime/allocator.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 
 namespace hipsycl {
 namespace sycl {
 
+// Wrapper namespace to declare all usm properties
+namespace property::usm {
+
+}
 
 // Explicit USM
 
 inline void *malloc_device(size_t num_bytes, const device &dev,
                            const context &ctx,
                            const property_list &propList = {}) {
+  rt::allocation_hints hints{};
   return rt::allocate_device(detail::select_device_allocator(dev), 0,
-                             num_bytes);
+                             num_bytes, hints);
 }
 
 template <typename T>
@@ -62,8 +68,9 @@ T* malloc_device(std::size_t count, const queue &q,
 inline void *aligned_alloc_device(std::size_t alignment, std::size_t num_bytes,
                                   const device &dev, const context &ctx,
                                   const property_list &propList = {}) {
+  rt::allocation_hints hints{};
   return rt::allocate_device(detail::select_device_allocator(dev), alignment,
-                             num_bytes);
+                             num_bytes, hints);
 }
 
 template <typename T>
@@ -93,7 +100,9 @@ T *aligned_alloc_device(std::size_t alignment, std::size_t count,
 
 inline void *malloc_host(std::size_t num_bytes, const context &ctx,
                          const property_list &propList = {}) {
-  return rt::allocate_host(detail::select_usm_allocator(ctx), 0, num_bytes);
+  rt::allocation_hints hints{};
+  return rt::allocate_host(detail::select_usm_allocator(ctx), 0, num_bytes,
+                           hints);
 }
 
 template <typename T> T *malloc_host(std::size_t count, const context &ctx,
@@ -114,7 +123,9 @@ template <typename T> T *malloc_host(std::size_t count, const queue &q,
 inline void *malloc_shared(std::size_t num_bytes, const device &dev,
                            const context &ctx,
                            const property_list &propList = {}) {
-  return rt::allocate_shared(detail::select_usm_allocator(ctx, dev), num_bytes);
+  rt::allocation_hints hints{};
+  return rt::allocate_shared(detail::select_usm_allocator(ctx, dev), num_bytes,
+                             hints);
 }
 
 template <typename T>
@@ -137,8 +148,9 @@ template <typename T> T *malloc_shared(std::size_t count, const queue &q,
 inline void *aligned_alloc_host(std::size_t alignment, std::size_t num_bytes,
                                 const context &ctx,
                                 const property_list &propList = {}) {
+  rt::allocation_hints hints{};
   return rt::allocate_host(detail::select_usm_allocator(ctx), alignment,
-                           num_bytes);
+                           num_bytes, hints);
 }
 
 template <typename T>
@@ -166,7 +178,9 @@ T *aligned_alloc_host(std::size_t alignment, std::size_t count,
 inline void *aligned_alloc_shared(std::size_t alignment, std::size_t num_bytes,
                                   const device &dev, const context &ctx,
                                   const property_list &propList = {}) {
-  return rt::allocate_shared(detail::select_usm_allocator(ctx, dev), num_bytes);
+  rt::allocation_hints hints{};
+  return rt::allocate_shared(detail::select_usm_allocator(ctx, dev), num_bytes,
+                             hints);
 }
 
 template <typename T>

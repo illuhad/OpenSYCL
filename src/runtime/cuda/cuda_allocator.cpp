@@ -13,6 +13,7 @@
 #include "hipSYCL/runtime/cuda/cuda_allocator.hpp"
 #include "hipSYCL/runtime/cuda/cuda_device_manager.hpp"
 #include "hipSYCL/runtime/error.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 
 namespace hipsycl {
 namespace rt {
@@ -21,7 +22,8 @@ cuda_allocator::cuda_allocator(backend_descriptor desc, int cuda_device)
     : _backend_descriptor{desc}, _dev{cuda_device}
 {}
       
-void *cuda_allocator::raw_allocate(size_t min_alignment, size_t size_bytes)
+void *cuda_allocator::raw_allocate(size_t min_alignment, size_t size_bytes,
+                                   const allocation_hints &hints)
 {
   void *ptr;
   cuda_device_manager::get().activate_device(_dev);
@@ -38,8 +40,10 @@ void *cuda_allocator::raw_allocate(size_t min_alignment, size_t size_bytes)
   return ptr;
 }
 
-void *cuda_allocator::raw_allocate_optimized_host(size_t min_alignment,
-                                                  size_t bytes) {
+void *
+cuda_allocator::raw_allocate_optimized_host(size_t min_alignment,
+                                            size_t bytes,
+                                            const allocation_hints &hints) {
   void *ptr;
   cuda_device_manager::get().activate_device(_dev);
 
@@ -79,7 +83,8 @@ void cuda_allocator::raw_free(void *mem) {
   }
 }
 
-void * cuda_allocator::raw_allocate_usm(size_t bytes)
+void * cuda_allocator::raw_allocate_usm(size_t bytes,
+                                        const allocation_hints &hints)
 {
   cuda_device_manager::get().activate_device(_dev);
   

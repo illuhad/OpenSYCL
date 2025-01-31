@@ -13,6 +13,7 @@
 #include "hipSYCL/runtime/device_id.hpp"
 #include "hipSYCL/runtime/ze/ze_allocator.hpp"
 #include "hipSYCL/runtime/error.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
 namespace hipsycl {
@@ -29,7 +30,8 @@ ze_allocator::ze_allocator(std::size_t device_index,
                       static_cast<int>(device_index)};
 }
 
-void* ze_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
+void* ze_allocator::raw_allocate(size_t min_alignment, size_t size_bytes,
+                                 const allocation_hints &hints) {
   
   void* out = nullptr;
 
@@ -54,7 +56,8 @@ void* ze_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
 }
 
 void* ze_allocator::raw_allocate_optimized_host(size_t min_alignment,
-                                                size_t bytes) {
+                                                size_t bytes,
+                                                const allocation_hints &hints) {
   void* out = nullptr;
   ze_host_mem_alloc_desc_t desc;
   
@@ -85,7 +88,8 @@ void ze_allocator::raw_free(void *mem) {
   }
 }
 
-void* ze_allocator::raw_allocate_usm(size_t bytes) {
+void* ze_allocator::raw_allocate_usm(size_t bytes,
+                                     const allocation_hints &hints) {
 
   void* out = nullptr;
 

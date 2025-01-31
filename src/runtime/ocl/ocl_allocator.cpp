@@ -10,6 +10,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "hipSYCL/runtime/device_id.hpp"
 #include "hipSYCL/runtime/error.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 
 #include "hipSYCL/runtime/ocl/ocl_allocator.hpp"
 #include <cstddef>
@@ -20,7 +21,8 @@ namespace rt {
 ocl_allocator::ocl_allocator(rt::device_id dev, ocl_usm* usm)
 : _dev{dev}, _usm{usm} {}
 
-void* ocl_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
+void* ocl_allocator::raw_allocate(size_t min_alignment, size_t size_bytes,
+                                  const allocation_hints &hints) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",
@@ -41,7 +43,8 @@ void* ocl_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
 }
 
 void *ocl_allocator::raw_allocate_optimized_host(size_t min_alignment,
-                                             size_t bytes) {
+                                                 size_t bytes,
+                                                 const allocation_hints &hints) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",
@@ -76,7 +79,8 @@ void ocl_allocator::raw_free(void *mem) {
   }
 }
 
-void *ocl_allocator::raw_allocate_usm(size_t bytes) {
+void *ocl_allocator::raw_allocate_usm(size_t bytes,
+                                      const allocation_hints &hints) {
   if(!_usm->is_available()) {
     register_error(__acpp_here(),
                    error_info{"ocl_allocator: OpenCL device does not have valid USM provider",

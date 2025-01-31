@@ -12,6 +12,7 @@
 
 #include "hipSYCL/runtime/device_id.hpp"
 #include "hipSYCL/runtime/error.hpp"
+#include "hipSYCL/runtime/hints.hpp"
 #include "hipSYCL/runtime/omp/omp_allocator.hpp"
 #include "hipSYCL/runtime/util.hpp"
 
@@ -21,12 +22,13 @@ namespace rt {
 omp_allocator::omp_allocator(const device_id &my_device)
     : _my_device{my_device} {}
 
-void *omp_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
+void *omp_allocator::raw_allocate(size_t min_alignment, size_t size_bytes,
+                                  const allocation_hints &hints) {
   if(min_alignment < 32) {
     // Enforce alignment by default for performance reasons.
     // 32 is chosen since this is what is currently needed by the adaptivity
     // engine to consider an allocation strongly aligned.
-    return raw_allocate(32, size_bytes);
+    return raw_allocate(32, size_bytes, hints);
   }
 
 #if !defined(_WIN32)
@@ -44,7 +46,7 @@ void *omp_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
 
   if(min_alignment > 0 && size_bytes % min_alignment != 0)
     return raw_allocate(min_alignment,
-                        next_multiple_of(size_bytes, min_alignment));
+                        next_multiple_of(size_bytes, min_alignment), hints);
 
     // ToDo: Mac OS CI has a problem with std::aligned_alloc
     // but it's unclear if it's a Mac, or libc++, or toolchain issue
@@ -59,8 +61,9 @@ void *omp_allocator::raw_allocate(size_t min_alignment, size_t size_bytes) {
 }
 
 void *omp_allocator::raw_allocate_optimized_host(size_t min_alignment,
-                                             size_t bytes) {
-  return this->raw_allocate(min_alignment, bytes);
+                                                 size_t bytes,
+                                                 const allocation_hints &hints) {
+  return this->raw_allocate(min_alignment, bytes, hints);
 };
 
 void omp_allocator::raw_free(void *mem) {
@@ -71,8 +74,9 @@ void omp_allocator::raw_free(void *mem) {
 #endif
 }
 
-void* omp_allocator::raw_allocate_usm(size_t bytes) {
-  return this->raw_allocate(0, bytes);
+void* omp_allocator::raw_allocate_usm(size_t bytes,
+                                      const allocation_hints &hints) {
+  return this->raw_allocate(0, bytes, hints);
 }
 
 bool omp_allocator::is_usm_accessible_from(backend_descriptor b) const {
